@@ -1,0 +1,9 @@
+{
+  "name": "pm-money",
+  "version": "1.0.0",
+  "description": "Money in, money out — and what you own. One app over one spreadsheet.",
+  "private": true,
+  "scripts": {
+    "test": "node test.js && node test-integration.js && node test-parity.mjs"
+  }
+}

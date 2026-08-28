@@ -1,0 +1,2069 @@
+<title>± money</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="./manifest.json">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2e; --panel2:#0f1830; --border:#22314f;
+    --text:#e7ecf7; --muted:#93a1c0;
+    --money:#5b8def; --invest:#a78bfa; --accent:#5b8def;
+    --warn:#f59e0b; --bad:#ef4444; --good:#22c55e;
+    --radius:14px;
+  }
+  body[data-section="invest"]{--accent:var(--invest)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  body{padding-bottom:76px}
+  .hidden{display:none !important}
+  header{position:sticky;top:0;z-index:5;background:rgba(11,18,32,.94);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--border);padding:12px 14px 0}
+  header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px}
+  header p{margin:2px 0 10px;color:var(--muted);font-size:12.5px}
+  .switcher{display:flex;gap:6px;padding-bottom:10px}
+  .switcher button{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--muted);
+    border-radius:10px;padding:8px 6px;font-weight:600;font-size:13.5px}
+  .switcher button.active{color:#fff;border-color:transparent}
+  .switcher button[data-section="money"].active{background:var(--money)}
+  .switcher button[data-section="invest"].active{background:var(--invest)}
+  .switcher button[data-section="setup"].active{background:#475569}
+  main{max-width:680px;margin:0 auto;padding:14px 14px 24px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px;margin-bottom:12px}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:10px 8px;text-align:center}
+  .stat .v{font-size:16px;font-weight:700}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+  .stat.bad .v{color:var(--bad)} .stat.good .v{color:var(--good)} .stat.warn .v{color:var(--warn)}
+  textarea{width:100%;min-height:78px;background:var(--panel2);color:var(--text);
+    border:1px solid var(--border);border-radius:10px;padding:10px;font-size:15px;resize:vertical}
+  input,select{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:8px;font-size:13.5px;font-family:inherit}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+  button{font:inherit;cursor:pointer}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:600}
+  .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+  .btn.block{width:100%}
+  .btn:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:8px}
+  .row.wrap{flex-wrap:wrap}
+  .muted{color:var(--muted)}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .field input,.field select{width:100%}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pending-item{border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;background:var(--panel2)}
+  .pending-item .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .pending-item .amt{font-weight:700;font-size:16px}
+  .pending-item .raw{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .pending-item select,.pending-item input{width:100%;background:var(--bg);margin-top:6px}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:6px;
+    margin-left:6px;vertical-align:middle}
+  .badge.review{background:rgba(245,158,11,.18);color:var(--warn)}
+  .badge.income{background:rgba(34,197,94,.18);color:var(--good)}
+  .badge.expense{background:rgba(239,68,68,.14);color:#f87171}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .status-ok{color:var(--good)} .status-over{color:var(--bad);font-weight:700}
+  .group-head td{background:var(--panel2);font-weight:700;color:var(--muted)}
+  .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  nav.tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+    border-top:1px solid var(--border);display:flex;z-index:5}
+  nav.tabbar button{flex:1;background:none;border:none;color:var(--muted);padding:10px 4px 8px;
+    font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  nav.tabbar button .ic{font-size:18px}
+  nav.tabbar button.active{color:var(--accent)}
+  .empty{color:var(--muted);text-align:center;padding:22px 10px;font-size:14px}
+  .section-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.03em;margin:2px 0 8px}
+  .log-item{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .log-item:last-child{border-bottom:none}
+  .log-item .cat{font-weight:600}
+  .log-item .meta{color:var(--muted);font-size:12px}
+  .log-item .amt{font-weight:700;white-space:nowrap}
+  .log-item .amt.income{color:var(--good)}
+  .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#1c2a4a;
+    border:1px solid var(--border);padding:9px 16px;border-radius:20px;font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .budget-row input{width:90px;text-align:right}
+  .pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700}
+  .pill.BUY,.pill.READY{background:rgba(34,197,94,.18);color:var(--good)}
+  .pill.HOLD,.pill.WATCH{background:rgba(148,163,184,.18);color:var(--muted)}
+  .pill.AVOID{background:rgba(239,68,68,.16);color:#f87171}
+  .pill.APPROACHING{background:rgba(245,158,11,.18);color:var(--warn)}
+  .note{border-radius:10px;padding:10px;font-size:13px;margin-bottom:10px}
+  .note.ok{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35)}
+  .note.warn{background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35)}
+  .note.bad{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35)}
+  .note.info{background:rgba(91,141,239,.10);border:1px solid rgba(91,141,239,.35)}
+  .decision-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+    padding:10px;margin-top:8px;font-size:13px}
+  .why{color:var(--good);font-size:12.5px;margin-top:3px}
+  .risk-line{color:var(--warn);font-size:12.5px;margin-top:3px}
+  .clickable{cursor:pointer;text-decoration:underline dotted}
+  .bar{height:7px;background:var(--panel2);border-radius:20px;overflow:hidden;margin-top:4px}
+  .bar > i{display:block;height:100%;background:var(--good)}
+  .bar > i.over{background:var(--bad)}
+  .spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--muted);
+    border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .disclaimer{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4}
+</style>
+
+<header>
+  <h1>± money</h1>
+  <p id="header-sub">Money in, money out — and what you own.</p>
+  <div class="switcher">
+    <button data-action="switch-section" data-section="money" class="active">💰 Money</button>
+    <button data-action="switch-section" data-section="invest">📈 Invest</button>
+    <button data-action="switch-section" data-section="setup">⚙️ Setup</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= MONEY ================= -->
+  <section id="view-capture" class="hidden">
+    <div class="stat-row" id="dash-stats"></div>
+    <div class="card">
+      <div class="section-title">Add transaction(s)</div>
+      <textarea id="capture-input" placeholder="dinner rm10, telur rm12, apple rm12.50&#10;received salary 1900&#10;reload boost 50"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn block" data-action="parse-input">Parse</button>
+      </div>
+      <div id="pending-list"></div>
+      <div id="pending-actions" class="row hidden" style="margin-top:10px">
+        <button class="btn secondary" data-action="cancel-pending">Cancel</button>
+        <button class="btn block" data-action="save-pending">Save all</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Today</div>
+      <div id="today-log"></div>
+    </div>
+  </section>
+
+  <section id="view-log" class="hidden">
+    <div class="card">
+      <div class="row wrap" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="section-title" style="margin:0">Transaction log</div>
+        <button class="btn small secondary" data-action="export-csv">Export CSV</button>
+      </div>
+      <div id="full-log"></div>
+    </div>
+  </section>
+
+  <section id="view-budget" class="hidden">
+    <div class="card">
+      <div class="section-title">Monthly budget plan</div>
+      <p class="muted" style="margin-top:-4px;font-size:12.5px">
+        Seeded from your Google Sheet. Edit any target — it's saved on this device.
+      </p>
+      <div id="budget-editor"></div>
+    </div>
+  </section>
+
+  <section id="view-dashboard" class="hidden">
+    <div class="card">
+      <div class="section-title" id="dashboard-month-title">This month</div>
+      <div id="dashboard-summary"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Category breakdown — planned vs actual</div>
+      <div id="dashboard-breakdown"></div>
+    </div>
+  </section>
+
+  <!-- ================= INVEST ================= -->
+  <section id="view-screener" class="hidden">
+    <div class="card">
+      <div class="section-title">Screener</div>
+      <p class="muted" style="margin-top:-4px;font-size:12.5px">
+        Scans your Bursa universe on live prices, scores what passes, and shows the
+        entry/stop/target that would make each idea valid. It never places an order.
+      </p>
+      <div class="row">
+        <button class="btn block" data-action="run-screener" id="btn-run-screener">Run screener</button>
+      </div>
+      <div id="screen-status" class="muted" style="font-size:12.5px;margin-top:8px"></div>
+    </div>
+    <div id="regime-box"></div>
+    <div class="card" id="results-panel">
+      <div class="section-title">Results</div>
+      <div class="scroll-x"><table>
+        <thead><tr><th>Ticker</th><th class="num">Price</th><th>Trend</th><th class="num">RSI</th>
+          <th>Signal</th><th>Bucket</th><th class="num">1 lot</th></tr></thead>
+        <tbody id="results-body"></tbody>
+      </table></div>
+      <div id="results-empty" class="empty"></div>
+      <p class="disclaimer">Signals describe current price behaviour. They are not financial
+        advice and not a prediction. You place every order yourself.</p>
+    </div>
+  </section>
+
+  <section id="view-portfolio" class="hidden">
+    <div class="stat-row" id="portfolio-stats"></div>
+    <div class="card">
+      <div class="row wrap" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="section-title" style="margin:0">Holdings</div>
+        <button class="btn small secondary" data-action="refresh-invest">Refresh from Sheet</button>
+      </div>
+      <div id="holdings-list"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Log a trade</div>
+      <div class="grid2">
+        <div class="field"><label>Date</label><input type="date" id="t-date"></div>
+        <div class="field"><label>Side</label>
+          <select id="t-side"><option>Buy</option><option>Sell</option></select></div>
+        <div class="field"><label>Ticker</label><input type="text" id="t-ticker" placeholder="1155.KL"></div>
+        <div class="field"><label>Quantity</label><input type="number" id="t-qty" step="1" min="0"></div>
+        <div class="field"><label>Price (RM)</label><input type="number" id="t-price" step="0.001" min="0"></div>
+        <div class="field"><label>Fee (RM)</label><input type="number" id="t-fee" step="0.01" min="0" value="0"></div>
+      </div>
+      <div class="field"><label>Thesis — why are you doing this?</label>
+        <input type="text" id="t-thesis" placeholder="Uptrend + volume confirmation"></div>
+      <div class="field"><label>Invalidation — what would prove it wrong?</label>
+        <input type="text" id="t-invalidation" placeholder="Daily close below RM1.200"></div>
+      <button class="btn block" data-action="log-trade" id="btn-log-trade">Log trade to Sheet</button>
+      <p class="disclaimer">This records a trade you already made with your broker. It does not
+        execute anything.</p>
+    </div>
+    <div class="card">
+      <div class="section-title">Realized trades</div>
+      <div id="realized-list"></div>
+    </div>
+  </section>
+
+  <section id="view-risk" class="hidden">
+    <div class="card">
+      <div class="section-title">Portfolio heat</div>
+      <div id="risk-heat"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Loss limits</div>
+      <div id="risk-limits"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Track record</div>
+      <div id="risk-record"></div>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section id="view-setup" class="hidden">
+    <div class="card">
+      <div class="section-title">Google Sheet connection</div>
+      <p class="muted" style="margin-top:-4px;font-size:12.5px">
+        One spreadsheet holds Money, Net Worth and Invest. You sign in to your own
+        Google account — nothing goes anywhere else.
+      </p>
+      <div id="conn-status"></div>
+      <div class="field" style="margin-top:10px">
+        <label>Spreadsheet ID — from docs.google.com/spreadsheets/d/<b>THIS PART</b>/edit</label>
+        <input type="text" id="sheet-id" data-action="edit-sheet-id" placeholder="the long ID from the sheet's URL">
+      </div>
+      <div class="row">
+        <button class="btn secondary" data-action="google-signin" id="btn-google-signin">Connect Google</button>
+        <button class="btn block" data-action="discover-tabs" id="btn-discover">Check tabs</button>
+      </div>
+      <div id="tab-map" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Money sync</div>
+      <div id="sync-status"></div>
+      <button class="btn block" data-action="sync-now" id="btn-sync-now" disabled style="margin-top:10px">Sync now</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Invest settings</div>
+      <div class="grid2">
+        <div class="field"><label>Cash available to invest (RM)</label>
+          <input type="number" id="cfg-cash" data-action="edit-cash" step="0.01" min="0"></div>
+        <div class="field"><label>Max risk per trade (%)</label>
+          <input type="number" id="cfg-risk-pct" data-action="edit-risk" data-key="maxRiskPct" step="0.1" min="0"></div>
+        <div class="field"><label>Daily loss limit (RM)</label>
+          <input type="number" id="cfg-daily" data-action="edit-risk" data-key="daily" step="1" min="0"></div>
+        <div class="field"><label>Weekly loss limit (RM)</label>
+          <input type="number" id="cfg-weekly" data-action="edit-risk" data-key="weekly" step="1" min="0"></div>
+        <div class="field"><label>Monthly loss limit (RM)</label>
+          <input type="number" id="cfg-monthly" data-action="edit-risk" data-key="monthly" step="1" min="0"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">About</div>
+      <p class="muted" style="font-size:12.5px;margin:0">
+        ± money replaces Personal CFO and Signalvest with one app over one
+        spreadsheet. Money and Invest stay separate on purpose — different
+        decisions, different rhythms. Nothing here is financial advice.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabbar" id="tabbar"></nav>
+<div id="toast" class="toast"></div>
+
+<script>
+/* =========================================================================
+   ± money — one app over one spreadsheet.
+
+   Two deliberately separate worlds:
+     Money  — capture spending/income, budget vs actual   (was: Personal CFO)
+     Invest — screen, size, and record trades             (was: Signalvest)
+
+   They share exactly one thing: the Google Sheet connection. Money never
+   reads Invest's tabs and Invest never reads Money's, because mixing a
+   monthly-budget decision with a position-sizing decision is how you end up
+   doing neither well.
+
+   Both source apps used different sheet backends (Sheets API v4 + OAuth vs.
+   an Apps Script web app with a shared secret). This app unifies on the
+   OAuth Sheets API for both, so there is one sign-in and no secret parked
+   in localStorage.
+   ========================================================================= */
+"use strict";
+
+/* ---------- helpers ---------- */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* The minus sign goes before the currency ("-RM74.20"), not after it
+   ("RM-74.20") — a losing trade should read as a loss at a glance. */
+const fmtRM = (n) => {
+  const v = Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100;
+  return (v < 0 ? '-' : '') + 'RM' +
+    Math.abs(v).toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+};
+
+const fmtPct = (n) => (n == null || isNaN(n)) ? '—' : n.toFixed(1) + '%';
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const monthKey = (isoDate) => String(isoDate).slice(0, 7);
+const uid = () => 'tx_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const num = (v) => { const n = Number(String(v ?? '').replace(/[, ]/g, '')); return isNaN(n) ? 0 : n; };
+
+/* A1 notation for a tab whose name contains spaces/dashes. Sheets requires
+   single quotes around such names, and a literal quote inside doubles up. */
+function a1(tab, range) {
+  return "'" + String(tab).replace(/'/g, "''") + "'!" + range;
+}
+
+/* Sheet dates arrive in whatever the sheet decided to store: ISO, Malaysian
+   DD/MM/YYYY, or the "06 Aug 2026" text the Money tab uses. new Date() reads
+   DD/MM as MM/DD and silently gives you the wrong month, so parse explicitly
+   and only fall back to the built-in parser. */
+const MONTHS_SHORT = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function parseSheetDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+  m = s.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/);
+  if (m) {
+    const mo = MONTHS_SHORT.indexOf(m[2].slice(0, 3).toLowerCase());
+    if (mo >= 0) return new Date(+m[3], mo, +m[1]);
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* ============================ MONEY ============================ */
+
+/* Category taxonomy — verbatim from the Money - Budget Plan tab so this
+   app's categorization is the same join key the spreadsheet uses. */
+const CATEGORIES = [
+  { name: "Full-time salary (net)",        type: "Income",  group: "Income",    budget: 1942.95 },
+  { name: "Part-time / gig income",        type: "Income",  group: "Income",    budget: 0 },
+  { name: "Sewa rumah (own rent)",         type: "Expense", group: "Fixed",     budget: 250 },
+  { name: "Girlfriend's rent help",        type: "Expense", group: "Fixed",     budget: 0 },
+  { name: "Petrol",                        type: "Expense", group: "Fixed",     budget: 150 },
+  { name: "Reload (Boost eWallet)",        type: "Expense", group: "Fixed",     budget: 100 },
+  { name: "Utility",                       type: "Expense", group: "Fixed",     budget: 20 },
+  { name: "Food (daily)",                  type: "Expense", group: "Fixed",     budget: 300 },
+  { name: "Car sinking fund",              type: "Expense", group: "Savings",   budget: 120 },
+  { name: "Emergency Fund Tier 1",         type: "Expense", group: "Savings",   budget: 150 },
+  { name: "Emergency Fund Tier 2 (ASB)",   type: "Expense", group: "Savings",   budget: 350 },
+  { name: "Gold savings for Mom",          type: "Expense", group: "Family",    budget: 0 },
+  { name: "Sunday treat",                  type: "Expense", group: "Lifestyle", budget: 100 },
+  { name: "Dobi (laundry)",                type: "Expense", group: "Lifestyle", budget: 44 },
+  { name: "Post-jog drinks",               type: "Expense", group: "Lifestyle", budget: 91 },
+  { name: "PTPTN voluntary payment",       type: "Expense", group: "Optional",  budget: 0 },
+  { name: "Other food",                    type: "Expense", group: "Lifestyle", budget: 0 },
+  { name: "Other / Miscellaneous",         type: "Expense", group: "Other",     budget: 0 },
+];
+const CATEGORY_NAMES = CATEGORIES.map(c => c.name);
+const catInfo = (name) => CATEGORIES.find(c => c.name === name) || CATEGORIES[CATEGORIES.length - 1];
+
+const KEYWORD_MAP = [
+  [/\b(salary|gaji|payroll)\b/i, "Full-time salary (net)"],
+  [/\b(freelance|gig|part\s*time|part-time)\b/i, "Part-time / gig income"],
+  [/\b(girlfriend|gf)\b.*\brent\b/i, "Girlfriend's rent help"],
+  [/\b(rent|sewa)\b/i, "Sewa rumah (own rent)"],
+  [/\b(petrol|minyak|fuel|ron95|ron97)\b/i, "Petrol"],
+  [/\b(boost|reload|top ?up|e-?wallet|ewallet|shopeepay|tng)\b/i, "Reload (Boost eWallet)"],
+  [/\b(utility|utilities|bill|tnb|water bill|electric)\b/i, "Utility"],
+  [/\b(car sinking|car fund)\b/i, "Car sinking fund"],
+  [/\b(emergency fund tier 1|ef ?1|ef tier 1)\b/i, "Emergency Fund Tier 1"],
+  [/\b(asb|emergency fund tier 2|ef ?2|ef tier 2)\b/i, "Emergency Fund Tier 2 (ASB)"],
+  [/\b(gold)\b/i, "Gold savings for Mom"],
+  [/\bsunday treat\b/i, "Sunday treat"],
+  [/\b(dobi|laundry)\b/i, "Dobi (laundry)"],
+  [/\b(jog|run|lari|post-?jog|post workout)\b/i, "Post-jog drinks"],
+  [/\bptptn\b/i, "PTPTN voluntary payment"],
+  [/\b(dinner|lunch|breakfast|makan|food|beli|groceries|nasi|roti|ayam|telur|apple|bakso|kangkung|bawang|pisang|aiskrim|mineral|buntut|drinks?|tea|coffee|americano)\b/i, "Food (daily)"],
+];
+
+const INCOME_HINT = /\b(received|receive|gave me|gift|refund|bonus|dividend|income)\b/i;
+const LEARN_STOPWORDS = new Set([
+  'the','and','for','with','from','this','that','done','paid','rm','a','an',
+  'me','my','to','of','on','in','at','is','it','was','ni','tu','yang','dan'
+]);
+
+function learnableWords(text) {
+  return (text || '').toLowerCase().match(/[a-z][a-z']{2,}/g) || [];
+}
+
+function learnFromCorrection(rawText, category, learned) {
+  learnableWords(rawText).forEach(w => {
+    if (!LEARN_STOPWORDS.has(w)) learned[w] = category;
+  });
+  return learned;
+}
+
+function guessCategory(text, learned) {
+  if (learned) {
+    for (const w of learnableWords(text)) {
+      if (learned[w]) return { category: learned[w], confidence: 0.9 };
+    }
+  }
+  for (const [re, cat] of KEYWORD_MAP) if (re.test(text)) return { category: cat, confidence: 0.85 };
+  if (INCOME_HINT.test(text)) return { category: "Part-time / gig income", confidence: 0.35 };
+  return { category: "Other / Miscellaneous", confidence: 0.3 };
+}
+
+function flagDuplicates(pending, transactions, today) {
+  const todaysKeys = new Set(
+    transactions.filter(t => t.date === today).map(t => `${t.category}|${t.amount}`)
+  );
+  pending.forEach(p => {
+    p.duplicate = p.amount != null && todaysKeys.has(`${p.category}|${p.amount}`);
+  });
+  return pending;
+}
+
+function extractAmount(segment) {
+  let m = segment.match(/rm\s*([\d,]+(?:\.\d{1,2})?)/i);
+  if (m) {
+    const amount = parseFloat(m[1].replace(/,/g, ''));
+    const rest = (segment.slice(0, m.index) + ' ' + segment.slice(m.index + m[0].length)).trim();
+    return { amount, rest };
+  }
+  m = segment.match(/\b(\d+(?:\.\d{1,2})?)\b/);
+  if (m) {
+    const amount = parseFloat(m[1]);
+    const rest = (segment.slice(0, m.index) + ' ' + segment.slice(m.index + m[0].length)).trim();
+    return { amount, rest };
+  }
+  return null;
+}
+
+function splitSegments(text) {
+  return text.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+}
+
+function parseSegment(segment, learned) {
+  const extracted = extractAmount(segment);
+  if (!extracted || !(extracted.amount > 0)) {
+    return { rawText: segment, amount: null, note: segment, category: "Other / Miscellaneous",
+             type: "Expense", confidence: 0, error: 'No amount found' };
+  }
+  const note = extracted.rest.replace(/\s+/g, ' ').replace(/^(for|on|to)\s+/i, '').trim();
+  const { category, confidence } = guessCategory(segment, learned);
+  const type = catInfo(category).type;
+  return { rawText: segment, amount: extracted.amount, note: note || segment,
+           category, type, confidence, error: null };
+}
+
+function parseInput(text, learned) {
+  return splitSegments(text).map(s => parseSegment(s, learned));
+}
+
+function monthlyTotals(transactions, ymKey) {
+  let income = 0, expense = 0;
+  const byCategory = {};
+  transactions.forEach(t => {
+    if (monthKey(t.date) !== ymKey) return;
+    if (t.type === 'Income') income += t.amount; else expense += t.amount;
+    byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
+  });
+  return { income, expense, byCategory };
+}
+
+function lifetimeCash(transactions) {
+  return transactions.reduce((sum, t) => sum + (t.type === 'Income' ? t.amount : -t.amount), 0);
+}
+
+/* Matches the "06 Aug 2026" text format already in the Money tab's Date
+   column, so Sheets stores the same type it already holds there. */
+function fmtSheetDate(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  return `${day} ${month} ${d.getFullYear()}`;
+}
+
+/* First blank row in the tab's column A — that's where the pre-formatted
+   formulas in the other columns are waiting for data. */
+function findFirstEmptyRow(columnValues) {
+  for (let i = 1; i < columnValues.length; i++) {
+    const cell = columnValues[i] && columnValues[i][0];
+    if (!cell || !String(cell).trim()) return i + 1;
+  }
+  return columnValues.length + 1;
+}
+
+/* One write pair per transaction: columns A (Date), B (Category), D (Amount),
+   E (Notes) only — never C (Type) or F (Month), which are the sheet's own
+   pre-filled formulas for that row. */
+function buildSyncWrites(transactions, startRow, tab) {
+  return transactions.map((t, i) => {
+    const row = startRow + i;
+    return {
+      transactionId: t.id,
+      row,
+      ab: { range: a1(tab, `A${row}:B${row}`), values: [[fmtSheetDate(t.date), t.category]] },
+      de: { range: a1(tab, `D${row}:E${row}`), values: [[t.amount, t.note || '']] },
+    };
+  });
+}
+
+/* ============================ INVEST ============================ */
+
+const UNIVERSE = [
+  { code: "1155.KL", name: "Malayan Banking (Maybank)", sector: "Financial" },
+  { code: "1295.KL", name: "Public Bank", sector: "Financial" },
+  { code: "1023.KL", name: "CIMB Group", sector: "Financial" },
+  { code: "1066.KL", name: "RHB Bank", sector: "Financial" },
+  { code: "5819.KL", name: "Hong Leong Bank", sector: "Financial" },
+  { code: "1082.KL", name: "Hong Leong Financial Group", sector: "Financial" },
+  { code: "1015.KL", name: "AMMB (AmBank)", sector: "Financial" },
+  { code: "2488.KL", name: "Alliance Bank", sector: "Financial" },
+  { code: "5185.KL", name: "Affin Bank", sector: "Financial" },
+  { code: "5258.KL", name: "BIMB Holdings", sector: "Financial" },
+  { code: "1818.KL", name: "Bursa Malaysia", sector: "Financial" },
+  { code: "6888.KL", name: "Axiata Group", sector: "Telecommunications" },
+  { code: "6012.KL", name: "Maxis", sector: "Telecommunications" },
+  { code: "6947.KL", name: "CelcomDigi", sector: "Telecommunications" },
+  { code: "4863.KL", name: "Telekom Malaysia", sector: "Telecommunications" },
+  { code: "5347.KL", name: "Tenaga Nasional", sector: "Utilities" },
+  { code: "4677.KL", name: "YTL Corporation", sector: "Utilities" },
+  { code: "6742.KL", name: "YTL Power International", sector: "Utilities" },
+  { code: "5183.KL", name: "Petronas Chemicals", sector: "Energy" },
+  { code: "6033.KL", name: "Petronas Gas", sector: "Energy" },
+  { code: "5681.KL", name: "Petronas Dagangan", sector: "Energy" },
+  { code: "3816.KL", name: "MISC", sector: "Energy" },
+  { code: "7293.KL", name: "Yinson Holdings", sector: "Energy" },
+  { code: "5141.KL", name: "Dayang Enterprise", sector: "Energy" },
+  { code: "5210.KL", name: "Bumi Armada", sector: "Energy" },
+  { code: "5243.KL", name: "Velesto Energy", sector: "Energy" },
+  { code: "5218.KL", name: "Sapura Energy", sector: "Energy" },
+  { code: "5199.KL", name: "Hibiscus Petroleum", sector: "Energy" },
+  { code: "7277.KL", name: "Dialog Group", sector: "Energy" },
+  { code: "5285.KL", name: "Sime Darby Plantation", sector: "Plantation" },
+  { code: "1961.KL", name: "IOI Corporation", sector: "Plantation" },
+  { code: "2445.KL", name: "Kuala Lumpur Kepong (KLK)", sector: "Plantation" },
+  { code: "5222.KL", name: "FGV Holdings", sector: "Plantation" },
+  { code: "2291.KL", name: "Genting Plantations", sector: "Plantation" },
+  { code: "4197.KL", name: "Sime Darby", sector: "Industrial" },
+  { code: "3182.KL", name: "Genting Berhad", sector: "Consumer" },
+  { code: "4715.KL", name: "Genting Malaysia", sector: "Consumer" },
+  { code: "4707.KL", name: "Nestle (Malaysia)", sector: "Consumer" },
+  { code: "3689.KL", name: "Fraser & Neave (F&N)", sector: "Consumer" },
+  { code: "4065.KL", name: "PPB Group", sector: "Consumer" },
+  { code: "7084.KL", name: "QL Resources", sector: "Consumer" },
+  { code: "3026.KL", name: "Dutch Lady Milk Industries", sector: "Consumer" },
+  { code: "5296.KL", name: "MR DIY Group", sector: "Consumer" },
+  { code: "7052.KL", name: "Padini Holdings", sector: "Consumer" },
+  { code: "5398.KL", name: "Gamuda", sector: "Property & Construction" },
+  { code: "3336.KL", name: "IJM Corporation", sector: "Property & Construction" },
+  { code: "5211.KL", name: "Sunway Berhad", sector: "Property & Construction" },
+  { code: "8664.KL", name: "S P Setia", sector: "Property & Construction" },
+  { code: "5148.KL", name: "UEM Sunrise", sector: "Property & Construction" },
+  { code: "8206.KL", name: "Eco World Development", sector: "Property & Construction" },
+  { code: "8583.KL", name: "Mah Sing Group", sector: "Property & Construction" },
+  { code: "7113.KL", name: "Top Glove Corporation", sector: "Healthcare" },
+  { code: "5168.KL", name: "Hartalega Holdings", sector: "Healthcare" },
+  { code: "7106.KL", name: "Supermax Corporation", sector: "Healthcare" },
+  { code: "7153.KL", name: "Kossan Rubber Industries", sector: "Healthcare" },
+  { code: "5225.KL", name: "IHH Healthcare", sector: "Healthcare" },
+  { code: "0166.KL", name: "Inari Amertron", sector: "Technology" },
+  { code: "0128.KL", name: "Frontken Corporation", sector: "Technology" },
+  { code: "0097.KL", name: "ViTrox Corporation", sector: "Technology" },
+  { code: "3867.KL", name: "Malaysian Pacific Industries (MPI)", sector: "Technology" },
+  { code: "5005.KL", name: "Unisem (M)", sector: "Technology" },
+  { code: "7160.KL", name: "Pentamaster Corporation", sector: "Technology" },
+  { code: "0208.KL", name: "Greatech Technology", sector: "Technology" },
+  { code: "7204.KL", name: "D&O Green Technologies", sector: "Technology" },
+  { code: "0138.KL", name: "MyEG Services", sector: "Technology" },
+  { code: "5099.KL", name: "AirAsia Group (Capital A)", sector: "Transportation" },
+  { code: "0036.KL", name: "KGROUP", sector: "Unclassified" },
+];
+
+const DEFAULT_STRATEGY = {
+  id: "sma-rsi-v1", version: "1.0",
+  name: "SMA20/50 trend + RSI14 momentum",
+  weights: { trend: 2, momentum: 1, volume: 1, fundamentals: 2, marketRegime: 1, riskReward: 2, positionSizing: 1 }
+};
+function maxPossibleScore(weights) {
+  return Object.values(weights).reduce((s, w) => s + Math.abs(Number(w) || 0), 0);
+}
+
+const TOP_CANDIDATES = 3;   // at this budget you can act on 1-2 ideas; don't pretend otherwise
+const LIQUIDITY_FLOOR = 50000;
+const LOT_SIZE = 100;
+
+/* ---------- indicators ---------- */
+function sma(values, period) {
+  if (values.length < period) return null;
+  return values.slice(-period).reduce((a, b) => a + b, 0) / period;
+}
+
+function rsi14(closes) {
+  const period = 14;
+  if (closes.length < period + 1) return null;
+  const changes = [];
+  for (let i = 1; i < closes.length; i++) changes.push(closes[i] - closes[i - 1]);
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 0; i < period; i++) {
+    const c = changes[i];
+    if (c > 0) avgGain += c; else avgLoss += -c;
+  }
+  avgGain /= period; avgLoss /= period;
+  for (let i = period; i < changes.length; i++) {
+    const c = changes[i];
+    avgGain = (avgGain * (period - 1) + (c > 0 ? c : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (c < 0 ? -c : 0)) / period;
+  }
+  if (avgLoss === 0) return 100;
+  return 100 - 100 / (1 + avgGain / avgLoss);
+}
+
+function atr14(highs, lows, closes) {
+  const period = 14;
+  if (highs.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < highs.length; i++) {
+    trs.push(Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i - 1]),
+      Math.abs(lows[i] - closes[i - 1])
+    ));
+  }
+  let a = trs.slice(0, period).reduce((x, y) => x + y, 0) / period;
+  for (let i = period; i < trs.length; i++) a = (a * (period - 1) + trs[i]) / period;
+  return a;
+}
+
+function classify(closes) {
+  const s20 = sma(closes, 20), s50 = sma(closes, 50), r = rsi14(closes);
+  if (s20 == null || s50 == null || r == null) return null;
+  let trend = "flat";
+  if (s20 > s50) trend = "up"; else if (s20 < s50) trend = "down";
+  let signal = "HOLD";
+  if (trend === "up" && r >= 35 && r <= 68) signal = "BUY";
+  else if (trend === "down" && r >= 30) signal = "AVOID";
+  return { trend, rsi: r, signal, sma20: s20, sma50: s50 };
+}
+
+/* ---------- market regime ---------- */
+const REGIME_DISCLAIMER = "Describes current market condition, not a prediction of future direction.";
+function classifyRegime({ klciCloses, breadthPct = null }) {
+  const s20 = sma(klciCloses, 20), s50 = sma(klciCloses, 50), s200 = sma(klciCloses, 200);
+  const reasons = [];
+  let votes = 0, total = 0;
+
+  if (s20 != null && s50 != null) {
+    total++;
+    if (s20 > s50) { votes++; reasons.push("KLCI SMA20 above SMA50 (short-term uptrend)"); }
+    else reasons.push("KLCI SMA20 at/below SMA50 (short-term flat or down)");
+  }
+  if (s50 != null && s200 != null) {
+    total++;
+    if (s50 > s200) { votes++; reasons.push("KLCI SMA50 above SMA200 (long-term uptrend)"); }
+    else reasons.push("KLCI SMA50 at/below SMA200 (long-term flat or down)");
+  }
+  if (breadthPct != null) {
+    total++;
+    if (breadthPct >= 55) { votes++; reasons.push(`${breadthPct.toFixed(0)}% of your universe is in an uptrend (broad)`); }
+    else reasons.push(`${breadthPct.toFixed(0)}% of your universe is in an uptrend (narrow)`);
+  }
+
+  if (total === 0) {
+    return { regime: "NEUTRAL", reasons: ["Not enough KLCI history to classify"], confidence: 0, disclaimer: REGIME_DISCLAIMER };
+  }
+  const confidence = votes / total;
+  let regime = "NEUTRAL";
+  if (confidence >= 0.66) regime = "RISK_ON";
+  else if (confidence <= 0.33) regime = "RISK_OFF";
+  return { regime, reasons, confidence, votes, total, disclaimer: REGIME_DISCLAIMER };
+}
+
+/* ---------- decision engine ---------- */
+function scoreCandidate({ hist, cls, avgVol20, regime, fundamentals, strategy }) {
+  const w = strategy.weights;
+  const positives = [], risks = [];
+  let score = 0;
+
+  if (cls.trend === "up") {
+    score += w.trend;
+    positives.push(`Uptrend — SMA20 (RM${cls.sma20.toFixed(3)}) above SMA50 (RM${cls.sma50.toFixed(3)})`);
+  } else if (cls.trend === "down") {
+    risks.push("Downtrend — SMA20 below SMA50");
+  } else {
+    risks.push("No clear trend — SMA20 ≈ SMA50");
+  }
+
+  if (cls.rsi >= 35 && cls.rsi <= 68) {
+    score += w.momentum;
+    positives.push(`RSI ${cls.rsi.toFixed(1)} — healthy momentum, not overbought`);
+  } else if (cls.rsi > 68) {
+    risks.push(`RSI ${cls.rsi.toFixed(1)} — overbought, chasing risk`);
+  } else {
+    risks.push(`RSI ${cls.rsi.toFixed(1)} — weak or oversold momentum`);
+  }
+
+  const lastVol = hist.length ? hist[hist.length - 1].volume : 0;
+  const volRatio = avgVol20 > 0 ? lastVol / avgVol20 : null;
+  if (volRatio != null) {
+    if (volRatio >= 1.2) {
+      score += w.volume;
+      positives.push(`Volume +${Math.round((volRatio - 1) * 100)}% vs 20d average — confirmation`);
+    } else {
+      risks.push(`Volume ${Math.round(volRatio * 100)}% of 20d average — weak confirmation`);
+    }
+  }
+
+  if (fundamentals && typeof fundamentals.profitable === "boolean") {
+    if (fundamentals.profitable) { score += w.fundamentals; positives.push("Profitable (per your own check)"); }
+    else risks.push("Not confirmed profitable");
+  } else {
+    risks.push("Fundamentals not verified — check manually before acting");
+  }
+
+  if (regime === "RISK_ON") { score += w.marketRegime; positives.push("Market regime: risk-on"); }
+  else if (regime === "RISK_OFF") risks.push("Market regime: risk-off — lower-conviction environment");
+  else risks.push("Market regime: neutral");
+
+  return { score, positives, risks };
+}
+
+/* Entry/stop/target from the real fetched price and ATR only — never a
+   made-up resistance level. */
+function computeEntryStopTarget({ currentPrice, highs, lows, closes, targetRR = 2 }) {
+  const atr = atr14(highs, lows, closes);
+  if (atr == null) return null;
+  const entryLow = +currentPrice.toFixed(3);
+  const entryHigh = +(currentPrice * 1.03).toFixed(3);
+  const stop = +(currentPrice - 2 * atr).toFixed(3);
+  const riskPerShare = currentPrice - stop;
+  const target = +(currentPrice + targetRR * riskPerShare).toFixed(3);
+  return { entryLow, entryHigh, stop, target, riskPerShare, rr: targetRR, atr };
+}
+
+function buildInvalidation(stop) { return `Daily close below RM${stop.toFixed(3)}`; }
+
+function buildDecisionCard({ ticker, name, currentPrice, base, entryStopTarget, positionSizing, strategy }) {
+  const w = strategy.weights;
+  let score = base.score;
+  const positives = [...base.positives], risks = [...base.risks];
+
+  if (entryStopTarget && entryStopTarget.rr >= 2) {
+    score += w.riskReward;
+    positives.push(`Risk:reward ${entryStopTarget.rr.toFixed(1)} — favorable`);
+  } else if (entryStopTarget) {
+    risks.push(`Risk:reward ${entryStopTarget.rr.toFixed(1)} — below 2:1`);
+  }
+
+  if (positionSizing && positionSizing.valid && positionSizing.maxShares > 0) {
+    score += w.positionSizing;
+    positives.push(`Position sizing fits your risk limit and cash (max ${positionSizing.maxShares} shares)`);
+  } else if (positionSizing && positionSizing.valid) {
+    risks.push("Position sizing rounds to 0 shares at your current risk limit / cash — too small to act on");
+  }
+
+  return {
+    ticker, name, price: currentPrice, score, maxScore: maxPossibleScore(w),
+    entry: entryStopTarget ? [entryStopTarget.entryLow, entryStopTarget.entryHigh] : null,
+    stop: entryStopTarget ? entryStopTarget.stop : null,
+    target: entryStopTarget ? entryStopTarget.target : null,
+    rr: entryStopTarget ? entryStopTarget.rr : null,
+    invalidation: entryStopTarget ? buildInvalidation(entryStopTarget.stop) : null,
+    positionSizing: positionSizing || null,
+    positives, risks,
+    strategyId: strategy.id, strategyVersion: strategy.version
+  };
+}
+
+function classifyBucket({ score, maxScore, signal, fitsBudget, liquid }) {
+  if (!liquid || signal === "AVOID") return "AVOID";
+  const pct = maxScore > 0 ? score / maxScore : 0;
+  if (signal === "BUY" && pct >= 0.7 && fitsBudget) return "READY";
+  if (signal === "BUY" && pct >= 0.5) return "APPROACHING";
+  return "WATCH";
+}
+
+/* ---------- risk ---------- */
+function computePositionSize({ portfolioValue, maxRiskPct, entry, stop, cash, target, lotSize = LOT_SIZE }) {
+  const errors = [];
+  if (!(portfolioValue > 0)) errors.push("portfolio value must be greater than zero");
+  if (!(entry > 0)) errors.push("entry price must be greater than zero");
+  if (stop == null || !(stop >= 0)) errors.push("stop price must be zero or greater");
+  if (entry > 0 && stop != null && stop >= entry) errors.push("stop must be below entry for a long position");
+  if (errors.length) return { valid: false, errors };
+
+  const riskPerShare = entry - stop;
+  const maxRiskAmount = portfolioValue * (maxRiskPct / 100);
+  const maxSharesByRisk = Math.floor(maxRiskAmount / riskPerShare / lotSize) * lotSize;
+  const maxSharesByCash = cash > 0 ? Math.floor(cash / entry / lotSize) * lotSize : 0;
+  const maxShares = Math.max(0, Math.min(maxSharesByRisk, maxSharesByCash));
+  const maxLoss = maxShares * riskPerShare;
+
+  return {
+    valid: true, riskPerShare, maxRiskAmount, maxSharesByRisk, maxSharesByCash,
+    maxShares, maxCapital: maxShares * entry, maxLoss,
+    portfolioRiskPct: portfolioValue > 0 ? (maxLoss / portfolioValue) * 100 : null,
+    rr: target != null && target > entry ? (target - entry) / riskPerShare : null,
+    limitedBy: maxSharesByRisk <= maxSharesByCash ? "risk" : "cash"
+  };
+}
+
+/* What you'd actually lose if every stop were hit. A holding with no stop
+   can't be quantified, so it's named rather than silently counted as zero. */
+function computePortfolioHeat({ holdings, cash }) {
+  const investedCapital = holdings.reduce((s, h) => s + h.qty * (h.currentPrice ?? h.avgCost), 0);
+  const totalValue = cash + investedCapital;
+  let totalRisk = 0;
+  const bySector = new Map();
+  let largestPosition = null;
+  const unquantified = [];
+
+  for (const h of holdings) {
+    const value = h.qty * (h.currentPrice ?? h.avgCost);
+    if (h.stopPrice != null) totalRisk += Math.max(0, h.avgCost - h.stopPrice) * h.qty;
+    else unquantified.push(h.ticker);
+    const sector = h.sector || "Unclassified";
+    bySector.set(sector, (bySector.get(sector) || 0) + value);
+    if (!largestPosition || value > largestPosition.value) largestPosition = { ticker: h.ticker, value };
+  }
+
+  const sectorBreakdown = [...bySector.entries()]
+    .map(([sector, value]) => ({ sector, value, pct: totalValue > 0 ? (value / totalValue) * 100 : 0 }))
+    .sort((a, b) => b.value - a.value);
+
+  return {
+    totalValue, cash, investedCapital,
+    portfolioHeatPct: totalValue > 0 ? (totalRisk / totalValue) * 100 : 0,
+    totalRiskAmount: totalRisk, unquantifiedRiskPositions: unquantified,
+    sectorBreakdown, largestSector: sectorBreakdown[0] || null, largestPosition
+  };
+}
+
+/* Realized losses only — "how much have I actually locked in losing this
+   period", which is the number a loss limit is about. */
+function evaluateLossLimits({ realizedTrades, limits, now = new Date() }) {
+  const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  function windowStatus(sinceDate, limit) {
+    const net = realizedTrades
+      .filter(t => { const d = parseSheetDate(t.date); return d && d >= sinceDate; })
+      .reduce((s, t) => s + t.pl, 0);
+    const loss = net < 0 ? -net : 0;
+    const lim = Number(limit) || 0;
+    return { netPL: net, loss, limit: lim, pctUsed: lim > 0 ? (loss / lim) * 100 : 0, breached: lim > 0 && loss >= lim };
+  }
+
+  const daily = windowStatus(startOfDay, limits.daily);
+  const weekly = windowStatus(startOfWeek, limits.weekly);
+  const monthly = windowStatus(startOfMonth, limits.monthly);
+  return { daily, weekly, monthly, paused: daily.breached || weekly.breached || monthly.breached };
+}
+
+function consecutiveStreak(realizedTradesAsc) {
+  let runWin = 0, runLoss = 0, maxWinStreak = 0, maxLossStreak = 0;
+  for (const t of realizedTradesAsc) {
+    if (t.pl > 0) { runWin++; runLoss = 0; maxWinStreak = Math.max(maxWinStreak, runWin); }
+    else if (t.pl < 0) { runLoss++; runWin = 0; maxLossStreak = Math.max(maxLossStreak, runLoss); }
+    else { runWin = 0; runLoss = 0; }
+  }
+  const last = realizedTradesAsc[realizedTradesAsc.length - 1];
+  return { maxWinStreak, maxLossStreak, trailingStreak: last ? (last.pl > 0 ? runWin : last.pl < 0 ? -runLoss : 0) : 0 };
+}
+
+/* Hard stop = 2xATR below entry. Trailing (Chandelier) stop = 22-session high
+   minus 3xATR, and only takes over once it's above the hard stop. The
+   operative stop never moves down. Advisory only — never places an order. */
+function computeStopInfo(hist, avgCost) {
+  const closes = hist.map(h => h.close), highs = hist.map(h => h.high), lows = hist.map(h => h.low);
+  const atr = atr14(highs, lows, closes);
+  if (atr == null) return null;
+  const currentPrice = closes[closes.length - 1];
+  const highestHigh = Math.max(...highs.slice(-Math.min(22, highs.length)));
+  const hardStop = avgCost - 2 * atr;
+  const chandelier = highestHigh - 3 * atr;
+  const operative = Math.max(hardStop, chandelier);
+  let stopState;
+  if (currentPrice <= operative) stopState = "breached";
+  else if (currentPrice <= operative * 1.03) stopState = "near";
+  else if (chandelier > hardStop) stopState = "trailing";
+  else stopState = "initial";
+  return { atr, currentPrice, hardStop, chandelier, operative, state: stopState };
+}
+
+/* ---------- ledger ----------
+   Same average-cost convention as the Sheet's Holdings formulas: avg cost is
+   the average of ALL buys ever, unaffected by intervening sells — a sell only
+   reduces qty and books P/L against that average, it never rebases it. */
+const CASH_TYPES = new Set(["Deposit", "Withdrawal"]);
+
+function normalizeTx(raw, index = 0) {
+  const side = raw.side || (raw.type === "Buy" || raw.type === "Sell" ? raw.type : "");
+  return {
+    _index: index,
+    date: raw.date,
+    type: raw.type || side || "Buy",
+    side,
+    ticker: String(raw.ticker || "").toUpperCase(),
+    qty: num(raw.qty),
+    price: num(raw.price),
+    amount: raw.amount != null && raw.amount !== "" ? num(raw.amount) : num(raw.qty) * num(raw.price),
+    fee: num(raw.fee),
+    currency: raw.currency || "MYR",
+    source: raw.source || "",
+    setup: raw.setup || "",
+    emotion: raw.emotion || "",
+    thesis: raw.thesis || "",
+    invalidation: raw.invalidation || "",
+    strategyVersion: raw.strategyVersion || "",
+    signalScore: raw.signalScore !== undefined && raw.signalScore !== "" ? num(raw.signalScore) : null,
+    ruleFollowed: raw.ruleFollowed
+  };
+}
+
+function sortByDate(txs) {
+  return [...txs].sort((a, b) => {
+    const da = parseSheetDate(a.date), db = parseSheetDate(b.date);
+    const ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return a._index - b._index;
+  });
+}
+
+function reduceLedger(rawTransactions) {
+  const txs = sortByDate(rawTransactions.map(normalizeTx));
+  const positions = new Map();
+  const realizedTrades = [], dividends = [], cashFlows = [], warnings = [];
+  let realizedPLTotal = 0;
+
+  for (const t of txs) {
+    if (t.type === "Dividend") { dividends.push({ date: t.date, ticker: t.ticker, amount: t.amount, fee: t.fee }); continue; }
+    if (CASH_TYPES.has(t.type)) { cashFlows.push({ date: t.date, type: t.type, amount: t.amount }); continue; }
+    if (t.type === "CorporateAction") continue;
+    if (!t.ticker || !(t.qty > 0)) continue;
+
+    const pos = positions.get(t.ticker) || { qty: 0, buyQty: 0, buyAmount: 0 };
+    if (t.side === "Buy" || t.type === "Buy") {
+      pos.qty += t.qty; pos.buyQty += t.qty; pos.buyAmount += t.qty * t.price;
+      positions.set(t.ticker, pos);
+    } else if (t.side === "Sell" || t.type === "Sell") {
+      const avgCostAtSale = pos.buyQty > 0 ? pos.buyAmount / pos.buyQty : 0;
+      let sellQty = t.qty;
+      if (sellQty > pos.qty) {
+        warnings.push(`${t.ticker} on ${t.date}: sell of ${t.qty} exceeds tracked position (${pos.qty}) — likely a missing buy row or an out-of-order import. Capped at ${pos.qty}.`);
+        sellQty = pos.qty;
+      }
+      const pl = (t.price - avgCostAtSale) * sellQty - t.fee;
+      realizedPLTotal += pl;
+      realizedTrades.push({ date: t.date, ticker: t.ticker, qty: sellQty, exitPrice: t.price,
+        avgCostAtSale, pl, fee: t.fee, setup: t.setup, emotion: t.emotion,
+        ruleFollowed: t.ruleFollowed, strategyVersion: t.strategyVersion, signalScore: t.signalScore });
+      pos.qty -= sellQty;
+      positions.set(t.ticker, pos);
+    }
+  }
+
+  const holdings = [];
+  for (const [ticker, pos] of positions.entries()) {
+    if (pos.qty > 0) {
+      const avgCost = pos.buyQty > 0 ? pos.buyAmount / pos.buyQty : 0;
+      holdings.push({ ticker, qty: pos.qty, avgCost, costBasis: pos.qty * avgCost });
+    }
+  }
+  return { holdings, realizedTrades, dividends, cashFlows, realizedPLTotal, warnings };
+}
+
+/* ============================ SHEET WIRING ============================ */
+
+const GOOGLE_CLIENT_ID = '821978082875-10t6b32mn6hi9l6nii0romc71vcn0a0t.apps.googleusercontent.com';
+const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+const COMBINED_SHEET_ID = '18gPV_WMHzWHH4zppVu8jGl8Y36rAxknjBv3pD3OivXY';
+
+/* Tab names are discovered from the spreadsheet at runtime rather than
+   hardcoded, because the merge prefixed every tab ("Money - Transactions")
+   and a rename shouldn't silently break sync. Exact names win; the section +
+   keyword fallback keeps this working against the un-merged originals too. */
+const TAB_SPEC = [
+  { role: 'moneyTransactions', label: 'Money transactions', exact: ['Money - Transactions', 'Transactions'], section: 'money', keyword: 'transactions', required: true },
+  { role: 'moneyBudget',       label: 'Money budget plan',  exact: ['Money - Budget Plan', 'Budget Plan', 'Budget'], section: 'money', keyword: 'budget' },
+  { role: 'moneyDashboard',    label: 'Money dashboard',    exact: ['Money - Dashboard', 'Dashboard'], section: 'money', keyword: 'dashboard' },
+  { role: 'investTransactions',label: 'Invest transactions',exact: ['Invest - Transactions'], section: 'invest', keyword: 'transactions', required: true },
+  { role: 'investHoldings',    label: 'Invest holdings',    exact: ['Invest - Holdings', 'Holdings'], section: 'invest', keyword: 'holdings' },
+  { role: 'investConfig',      label: 'Invest config',      exact: ['Invest - Config', 'Config'], section: 'invest', keyword: 'config' },
+  { role: 'netWorth',          label: 'Net worth',          exact: ['NetWorth - Net Worth', 'Net Worth'], section: 'networth', keyword: 'networth' },
+];
+
+const normKey = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function resolveTabs(titles) {
+  const found = {}, missing = [];
+  const list = (titles || []).filter(Boolean);
+  for (const spec of TAB_SPEC) {
+    let hit = spec.exact.find(name => list.includes(name));
+    if (!hit) {
+      const wantSection = normKey(spec.section), wantKeyword = normKey(spec.keyword);
+      hit = list.find(t => {
+        const n = normKey(t);
+        return n.indexOf(wantSection) !== -1 && n.indexOf(wantKeyword) !== -1;
+      });
+    }
+    if (hit) found[spec.role] = hit;
+    else if (spec.required) missing.push(spec.label);
+  }
+  return { tabs: found, missing };
+}
+
+/* Invest - Transactions columns, matched by header text with a positional
+   fallback so a reordered column doesn't scramble every row. */
+const INVEST_TX_COLUMNS = [
+  ['date', 'Date'], ['side', 'Side'], ['ticker', 'Ticker'], ['qty', 'Qty'],
+  ['price', 'Price (RM)'], ['amount', 'Amount (RM)'], ['source', 'Source'],
+  ['type', 'Type'], ['fee', 'Fee (RM)'], ['currency', 'Currency'],
+  ['strategyVersion', 'Strategy Version'], ['signalScore', 'Signal Score'],
+  ['setup', 'Setup'], ['emotion', 'Emotion'], ['thesis', 'Thesis'],
+  ['invalidation', 'Invalidation'], ['ruleFollowed', 'Rule Followed'],
+];
+
+function investTxRowsToObjects(values) {
+  if (!values || values.length < 2) return [];
+  const header = (values[0] || []).map(normKey);
+  const idx = {};
+  INVEST_TX_COLUMNS.forEach(([key, title], i) => {
+    const c = header.indexOf(normKey(title));
+    idx[key] = c === -1 ? i : c;
+  });
+  return values.slice(1)
+    .filter(r => r && r.some(c => String(c ?? '').trim()))
+    .map(r => {
+      const o = {};
+      INVEST_TX_COLUMNS.forEach(([key]) => { o[key] = r[idx[key]] ?? ''; });
+      return o;
+    });
+}
+
+function buildInvestTradeRow(t) {
+  const qty = num(t.qty), price = num(t.price);
+  const boolCell = (v) => v === true ? 'TRUE' : v === false ? 'FALSE' : '';
+  return [
+    t.date, t.side, String(t.ticker || '').toUpperCase(), qty, price,
+    t.amount != null && t.amount !== '' ? num(t.amount) : qty * price,
+    t.source || 'app', t.type || t.side, num(t.fee), t.currency || 'MYR',
+    t.strategyVersion || '', t.signalScore == null || t.signalScore === '' ? '' : num(t.signalScore),
+    t.setup || '', t.emotion || '', t.thesis || '', t.invalidation || '', boolCell(t.ruleFollowed),
+  ];
+}
+
+/* Invest - Config is a Key/Value tab. Only the keys this app understands are
+   read; anything else in there is left alone. */
+const CONFIG_KEYS = {
+  cash: ['Cash available to invest (RM)', 'Cash available to invest'],
+  moomooValue: ['Moomoo portfolio value (RM)', 'Moomoo portfolio value'],
+  maxRiskPct: ['Max risk per trade (%)', 'Max risk per trade'],
+  daily: ['Daily loss limit (RM)', 'Daily loss limit'],
+  weekly: ['Weekly loss limit (RM)', 'Weekly loss limit'],
+  monthly: ['Monthly loss limit (RM)', 'Monthly loss limit'],
+};
+
+function parseConfigRows(values) {
+  const byKey = new Map();
+  (values || []).forEach(r => {
+    const k = normKey(r && r[0]);
+    if (k) byKey.set(k, r[1]);
+  });
+  const out = {};
+  Object.entries(CONFIG_KEYS).forEach(([field, names]) => {
+    for (const n of names) {
+      const v = byKey.get(normKey(n));
+      if (v !== undefined && String(v).trim() !== '') { out[field] = num(v); return; }
+    }
+  });
+  return out;
+}
+
+/* ---------- storage ---------- */
+const LS = {
+  tx: 'pm_transactions_v1', budgets: 'pm_budgets_v1', learned: 'pm_learned_v1',
+  sheetId: 'pm_sheet_id_v1', syncedIds: 'pm_synced_ids_v1',
+  cash: 'pm_cash_v1', riskLimits: 'pm_risk_limits_v1', tabs: 'pm_tabs_v1',
+};
+
+function safeGet(key, fallback) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch (e) { return fallback; }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+  catch (e) { toast('Storage full or unavailable — export your data soon.'); return false; }
+}
+
+function loadBudgets() {
+  const stored = safeGet(LS.budgets, {});
+  const merged = {};
+  CATEGORIES.forEach(c => { merged[c.name] = (c.name in stored) ? stored[c.name] : c.budget; });
+  return merged;
+}
+
+/* ---------- app state ---------- */
+const DEFAULT_RISK_LIMITS = { daily: 150, weekly: 300, monthly: 600, maxRiskPct: 1 };
+
+const state = {
+  section: 'money',
+  tab: { money: 'capture', invest: 'screener' },
+  // money
+  transactions: safeGet(LS.tx, []),
+  budgets: loadBudgets(),
+  learned: safeGet(LS.learned, {}),
+  pending: [],
+  syncedIds: new Set(safeGet(LS.syncedIds, [])),
+  syncing: false,
+  lastSyncMsg: '',
+  // invest
+  strategy: DEFAULT_STRATEGY,
+  cash: safeGet(LS.cash, 0),
+  riskLimits: Object.assign({}, DEFAULT_RISK_LIMITS, safeGet(LS.riskLimits, {})),
+  universe: UNIVERSE,
+  holdings: [],
+  realizedTrades: [],
+  ledgerWarnings: [],
+  screenRows: [],
+  lastRegime: null,
+  screening: false,
+  screenStatus: '',
+  investLoaded: false,
+  investMsg: '',
+  // shared
+  sheetId: safeGet(LS.sheetId, COMBINED_SHEET_ID),
+  tabs: safeGet(LS.tabs, {}),
+  tabsMissing: [],
+  accessToken: null,   // in memory only — never persisted
+};
+
+const TABS = {
+  money: [
+    { id: 'capture',   label: 'Capture',   icon: '✍️' },
+    { id: 'log',       label: 'Log',       icon: '📒' },
+    { id: 'budget',    label: 'Budget',    icon: '🎯' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  ],
+  invest: [
+    { id: 'screener',  label: 'Screener',  icon: '🔍' },
+    { id: 'portfolio', label: 'Portfolio', icon: '📈' },
+    { id: 'risk',      label: 'Risk',      icon: '🛡️' },
+  ],
+};
+
+const ALL_VIEWS = ['capture', 'log', 'budget', 'dashboard', 'screener', 'portfolio', 'risk', 'setup'];
+
+const SECTION_SUB = {
+  money: 'Money in, money out — and where it went.',
+  invest: 'What you own, what it risks, and what to do next.',
+  setup: 'One sheet, one sign-in, both sections.',
+};
+
+function activeView() {
+  return state.section === 'setup' ? 'setup' : state.tab[state.section];
+}
+
+/* ---------- render ---------- */
+function render() {
+  const view = activeView();
+  ALL_VIEWS.forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.classList.toggle('hidden', v !== view);
+  });
+  document.body.dataset.section = state.section;
+  document.querySelectorAll('.switcher button').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === state.section);
+  });
+  const sub = document.getElementById('header-sub');
+  if (sub) sub.textContent = SECTION_SUB[state.section] || '';
+
+  renderTabbar();
+
+  if (view === 'capture')   { renderDashStats(); renderPending(); renderTodayLog(); }
+  if (view === 'log')       renderFullLog();
+  if (view === 'budget')    renderBudgetEditor();
+  if (view === 'dashboard') renderDashboardTab();
+  if (view === 'screener')  renderScreener();
+  if (view === 'portfolio') renderPortfolio();
+  if (view === 'risk')      renderRiskTab();
+  if (view === 'setup')     renderSetup();
+}
+
+function renderTabbar() {
+  const bar = document.getElementById('tabbar');
+  const tabs = TABS[state.section];
+  if (!tabs) { bar.innerHTML = ''; bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const current = state.tab[state.section];
+  bar.innerHTML = tabs.map(t => `
+    <button data-action="switch-tab" data-tab="${esc(t.id)}" class="${t.id === current ? 'active' : ''}">
+      <span class="ic">${t.icon}</span>${esc(t.label)}
+    </button>`).join('');
+}
+
+/* ---------- money renders ---------- */
+function renderDashStats() {
+  const ym = monthKey(todayISO());
+  const { expense } = monthlyTotals(state.transactions, ym);
+  const cash = lifetimeCash(state.transactions);
+  const totalExpenseBudget = CATEGORIES.filter(c => c.type === 'Expense')
+    .reduce((s, c) => s + (state.budgets[c.name] || 0), 0);
+  const remaining = totalExpenseBudget - expense;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat ${cash < 0 ? 'bad' : ''}"><div class="v">${esc(fmtRM(cash))}</div><div class="l">Current cash</div></div>
+    <div class="stat"><div class="v">${esc(fmtRM(expense))}</div><div class="l">Monthly spending</div></div>
+    <div class="stat ${remaining < 0 ? 'bad' : 'good'}"><div class="v">${esc(fmtRM(remaining))}</div><div class="l">Budget remaining</div></div>`;
+}
+
+function pendingItemHTML(p, i) {
+  const opts = CATEGORY_NAMES.map(n =>
+    `<option value="${esc(n)}" ${n === p.category ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  const info = catInfo(p.category);
+  const typeBadge = `<span class="badge ${info.type === 'Income' ? 'income' : 'expense'}">${info.type}</span>`;
+  const reviewBadge = p.confidence < 0.5 ? `<span class="badge review">check category</span>` : '';
+  const dupBadge = p.duplicate ? `<span class="badge review">possible duplicate</span>` : '';
+  const errorLine = p.error ? `<div class="raw" style="color:var(--bad)">⚠ ${esc(p.error)} — edit amount below</div>` : '';
+  return `
+    <div class="pending-item" data-pending-index="${i}">
+      <div class="top">
+        <div class="amt">${p.amount != null ? esc(fmtRM(p.amount)) : '—'}</div>
+        <div>${typeBadge}${reviewBadge}${dupBadge}</div>
+      </div>
+      <div class="raw">"${esc(p.rawText)}"</div>
+      ${errorLine}
+      <input type="number" step="0.01" min="0" placeholder="Amount (RM)"
+        value="${p.amount != null ? p.amount : ''}" data-action="edit-pending-amount" data-index="${i}">
+      <select data-action="edit-pending-category" data-index="${i}">${opts}</select>
+      <input type="text" placeholder="Note" value="${esc(p.note)}" data-action="edit-pending-note" data-index="${i}">
+      <button class="btn secondary small" style="margin-top:6px" data-action="remove-pending" data-index="${i}">Remove this line</button>
+    </div>`;
+}
+
+function renderPending() {
+  const list = document.getElementById('pending-list');
+  const actions = document.getElementById('pending-actions');
+  if (!state.pending.length) { list.innerHTML = ''; actions.classList.add('hidden'); return; }
+  list.innerHTML = state.pending.map(pendingItemHTML).join('');
+  actions.classList.remove('hidden');
+}
+
+function logItemHTML(t) {
+  const info = catInfo(t.category);
+  const sign = t.type === 'Income' ? '+' : '−';
+  const synced = state.syncedIds.has(t.id) ? '' : ' · not synced';
+  return `
+    <div class="log-item">
+      <div>
+        <div class="cat">${esc(t.category)}</div>
+        <div class="meta">${esc(t.date)}${t.note ? ' · ' + esc(t.note) : ''} · ${esc(info.group)}${synced}</div>
+      </div>
+      <div class="amt ${t.type === 'Income' ? 'income' : ''}">${sign}${esc(fmtRM(t.amount))}</div>
+    </div>`;
+}
+
+function renderTodayLog() {
+  const today = todayISO();
+  const todays = state.transactions.filter(t => t.date === today).sort((a, b) => b.createdAt - a.createdAt);
+  document.getElementById('today-log').innerHTML = todays.length
+    ? todays.map(logItemHTML).join('')
+    : `<div class="empty">Nothing logged today yet.</div>`;
+}
+
+function renderFullLog() {
+  const sorted = [...state.transactions].sort((a, b) => b.createdAt - a.createdAt);
+  document.getElementById('full-log').innerHTML = sorted.length
+    ? sorted.map(logItemHTML).join('')
+    : `<div class="empty">No transactions yet. Add one on the Capture tab.</div>`;
+}
+
+function renderBudgetEditor() {
+  const groups = ['Income', 'Fixed', 'Savings', 'Family', 'Lifestyle', 'Optional', 'Other'];
+  let html = '';
+  groups.forEach(g => {
+    const cats = CATEGORIES.filter(c => c.group === g);
+    if (!cats.length) return;
+    html += `<div class="section-title" style="margin-top:14px">${esc(g)}</div>`;
+    cats.forEach(c => {
+      html += `
+        <div class="row budget-row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>${esc(c.name)}</div>
+          <input type="number" step="0.01" min="0" value="${state.budgets[c.name]}"
+            data-action="edit-budget" data-category="${esc(c.name)}">
+        </div>`;
+    });
+  });
+  document.getElementById('budget-editor').innerHTML = html;
+}
+
+function renderDashboardTab() {
+  const ym = monthKey(todayISO());
+  const { income, expense, byCategory } = monthlyTotals(state.transactions, ym);
+  const plannedIncome = CATEGORIES.filter(c => c.type === 'Income').reduce((s, c) => s + (state.budgets[c.name] || 0), 0);
+  const plannedExpense = CATEGORIES.filter(c => c.type === 'Expense').reduce((s, c) => s + (state.budgets[c.name] || 0), 0);
+  const monthLabel = new Date(ym + '-01T00:00:00').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+
+  document.getElementById('dashboard-month-title').textContent = monthLabel;
+  document.getElementById('dashboard-summary').innerHTML = `
+    <table>
+      <tr><td>Planned income</td><td class="num">${esc(fmtRM(plannedIncome))}</td></tr>
+      <tr><td>Actual income logged</td><td class="num">${esc(fmtRM(income))}</td></tr>
+      <tr><td>Planned expenses</td><td class="num">${esc(fmtRM(plannedExpense))}</td></tr>
+      <tr><td>Actual expenses logged</td><td class="num">${esc(fmtRM(expense))}</td></tr>
+      <tr><td><b>Planned net</b></td><td class="num"><b>${esc(fmtRM(plannedIncome - plannedExpense))}</b></td></tr>
+      <tr><td><b>Actual net (this month)</b></td><td class="num"><b>${esc(fmtRM(income - expense))}</b></td></tr>
+    </table>`;
+
+  const groups = ['Fixed', 'Savings', 'Family', 'Lifestyle', 'Optional', 'Other'];
+  let rows = `<table><tr><th>Category</th><th class="num">Target</th><th class="num">Actual</th><th class="num">Variance</th></tr>`;
+  groups.forEach(g => {
+    const cats = CATEGORIES.filter(c => c.group === g && c.type === 'Expense');
+    if (!cats.length) return;
+    rows += `<tr class="group-head"><td colspan="4">${esc(g)}</td></tr>`;
+    cats.forEach(c => {
+      const target = state.budgets[c.name] || 0;
+      const actual = byCategory[c.name] || 0;
+      const over = target > 0 && actual > target;
+      rows += `<tr>
+        <td>${esc(c.name)}</td>
+        <td class="num">${target ? esc(fmtRM(target)) : '–'}</td>
+        <td class="num">${actual ? esc(fmtRM(actual)) : '–'}</td>
+        <td class="num ${over ? 'status-over' : 'status-ok'}">${target ? esc(fmtRM(target - actual)) : '–'}</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('dashboard-breakdown').innerHTML = rows + `</table>`;
+}
+
+/* ---------- invest renders ---------- */
+function renderScreener() {
+  document.getElementById('screen-status').innerHTML =
+    (state.screening ? '<span class="spinner"></span> ' : '') + esc(state.screenStatus);
+  document.getElementById('btn-run-screener').disabled = state.screening;
+
+  const box = document.getElementById('regime-box');
+  const r = state.lastRegime;
+  box.innerHTML = !r ? '' : `
+    <div class="note ${r.regime === 'RISK_ON' ? 'ok' : r.regime === 'RISK_OFF' ? 'warn' : 'info'}">
+      <b>Market regime: ${esc(r.regime.replace('_', '-'))}</b><br>
+      ${r.reasons.map(x => esc(x)).join('<br>')}<br>
+      <span class="muted">${esc(r.disclaimer)}</span>
+    </div>`;
+
+  const body = document.getElementById('results-body');
+  const empty = document.getElementById('results-empty');
+  if (!state.screenRows.length) {
+    body.innerHTML = '';
+    empty.innerHTML = state.screening
+      ? 'Scanning…'
+      : state.screenStatus
+        ? 'Nothing passed the screen this run. Run the screener again to see candidates.'
+        : 'Run the screener to see candidates.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = state.screenRows.map((r, i) => {
+    const detail = r.card ? `
+      <tr><td colspan="7">${decisionCardHTML(r.card)}</td></tr>` : '';
+    return `
+      <tr>
+        <td class="${r.card ? 'clickable' : ''}" ${r.card ? `data-action="toggle-card" data-index="${i}"` : ''}>
+          ${esc(r.code)}${r.isHeld ? ' <span class="muted">(held)</span>' : ''}<br>
+          <span class="muted">${esc(r.name)}</span>
+        </td>
+        <td class="num">${r.price.toFixed(3)}</td>
+        <td>${esc(r.trend)}</td>
+        <td class="num">${r.rsi.toFixed(1)}</td>
+        <td><span class="pill ${esc(r.signal)}">${esc(r.signal)}</span></td>
+        <td><span class="pill ${esc(r.bucket)}">${esc(r.bucket)}</span></td>
+        <td class="num">${esc(fmtRM(r.lotCost))}</td>
+      </tr>
+      ${r.expanded ? detail : ''}`;
+  }).join('');
+}
+
+function decisionCardHTML(card) {
+  const sizing = card.positionSizing && card.positionSizing.valid
+    ? `Max position: ${card.positionSizing.maxShares} shares · Portfolio risk if stopped: ${fmtPct(card.positionSizing.portfolioRiskPct)}`
+    : 'Set your cash in Setup to see a sized position.';
+  return `
+    <div class="decision-card">
+      <div><b>${esc(card.ticker)}</b> — Score ${card.score.toFixed(0)}/${card.maxScore.toFixed(0)} · Strategy v${esc(card.strategyVersion)}</div>
+      <div style="margin:6px 0">
+        Entry RM${card.entry[0].toFixed(3)}–${card.entry[1].toFixed(3)} ·
+        Stop RM${card.stop.toFixed(3)} · Target RM${card.target.toFixed(3)} · R:R ${card.rr.toFixed(1)}
+      </div>
+      <div class="muted" style="margin-bottom:6px">${esc(sizing)}</div>
+      ${card.positives.map(p => `<div class="why">✓ ${esc(p)}</div>`).join('')}
+      ${card.risks.map(x => `<div class="risk-line">⚠ ${esc(x)}</div>`).join('')}
+      <div class="muted" style="margin-top:6px">Invalidation: ${esc(card.invalidation)}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" data-action="prefill-trade" data-ticker="${esc(card.ticker)}"
+          data-price="${card.price}" data-invalidation="${esc(card.invalidation)}">Take this to Portfolio</button>
+        <a class="btn secondary small" style="text-decoration:none;display:inline-block"
+          href="https://finance.yahoo.com/quote/${encodeURIComponent(card.ticker)}"
+          target="_blank" rel="noopener">Check fundamentals ↗</a>
+      </div>
+      <div class="muted" style="margin-top:6px;font-size:11px">
+        This never places an order. You execute with your broker, then log it on Portfolio.
+      </div>
+    </div>`;
+}
+
+function renderPortfolio() {
+  const invested = state.holdings.reduce((s, h) => s + h.qty * (h.currentPrice ?? h.avgCost), 0);
+  const totalValue = num(state.cash) + invested;
+  const realizedPL = state.realizedTrades.reduce((s, t) => s + t.pl, 0);
+
+  document.getElementById('portfolio-stats').innerHTML = `
+    <div class="stat"><div class="v">${esc(fmtRM(totalValue))}</div><div class="l">Portfolio value</div></div>
+    <div class="stat"><div class="v">${esc(fmtRM(state.cash))}</div><div class="l">Cash</div></div>
+    <div class="stat ${realizedPL < 0 ? 'bad' : realizedPL > 0 ? 'good' : ''}">
+      <div class="v">${esc(fmtRM(realizedPL))}</div><div class="l">Realized P/L</div></div>`;
+
+  const warn = state.ledgerWarnings.length
+    ? `<div class="note warn">${state.ledgerWarnings.map(w => esc(w)).join('<br>')}</div>` : '';
+  const msg = state.investMsg ? `<div class="note info">${esc(state.investMsg)}</div>` : '';
+
+  const list = document.getElementById('holdings-list');
+  if (!state.holdings.length) {
+    list.innerHTML = msg + warn + `<div class="empty">${state.investLoaded
+      ? 'No open positions.' : 'Connect in Setup, then Refresh from Sheet.'}</div>`;
+  } else {
+    list.innerHTML = msg + warn + `<div class="scroll-x"><table>
+      <thead><tr><th>Ticker</th><th class="num">Qty</th><th class="num">Avg cost</th>
+        <th class="num">Value</th><th>Stop</th></tr></thead>
+      <tbody>${state.holdings.map(h => {
+        const value = h.qty * (h.currentPrice ?? h.avgCost);
+        const s = h.stopInfo;
+        const stopCell = !s ? '<span class="muted">—</span>'
+          : `<span class="pill ${s.state === 'breached' ? 'AVOID' : s.state === 'near' ? 'APPROACHING' : 'BUY'}">${esc(s.state)}</span>
+             <br><span class="muted">RM${s.operative.toFixed(3)}</span>`;
+        return `<tr>
+          <td>${esc(h.ticker)}<br><span class="muted">${esc(h.sector || '')}</span></td>
+          <td class="num">${h.qty}</td>
+          <td class="num">${h.avgCost.toFixed(3)}</td>
+          <td class="num">${esc(fmtRM(value))}</td>
+          <td>${stopCell}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  const realized = document.getElementById('realized-list');
+  realized.innerHTML = state.realizedTrades.length
+    ? `<div class="scroll-x"><table>
+        <thead><tr><th>Date</th><th>Ticker</th><th class="num">Qty</th><th class="num">Exit</th><th class="num">P/L</th></tr></thead>
+        <tbody>${[...state.realizedTrades].reverse().map(t => `
+          <tr><td>${esc(t.date)}</td><td>${esc(t.ticker)}</td><td class="num">${t.qty}</td>
+            <td class="num">${t.exitPrice.toFixed(3)}</td>
+            <td class="num ${t.pl < 0 ? 'status-over' : 'status-ok'}">${esc(fmtRM(t.pl))}</td></tr>`).join('')}
+        </tbody></table></div>`
+    : `<div class="empty">No closed trades yet.</div>`;
+}
+
+function renderRiskTab() {
+  const heat = computePortfolioHeat({ holdings: state.holdings, cash: num(state.cash) });
+  const limits = evaluateLossLimits({ realizedTrades: state.realizedTrades, limits: state.riskLimits });
+  const streak = consecutiveStreak(state.realizedTrades);
+
+  const heatEl = document.getElementById('risk-heat');
+  const unquant = heat.unquantifiedRiskPositions.length
+    ? `<div class="note warn">No stop set for ${heat.unquantifiedRiskPositions.map(esc).join(', ')} —
+        that risk isn't counted below, it's just unmeasured.</div>` : '';
+  heatEl.innerHTML = unquant + `
+    <table>
+      <tr><td>Portfolio value</td><td class="num">${esc(fmtRM(heat.totalValue))}</td></tr>
+      <tr><td>Invested</td><td class="num">${esc(fmtRM(heat.investedCapital))}</td></tr>
+      <tr><td>At risk if every stop hits</td><td class="num">${esc(fmtRM(heat.totalRiskAmount))}</td></tr>
+      <tr><td><b>Portfolio heat</b></td><td class="num"><b>${fmtPct(heat.portfolioHeatPct)}</b></td></tr>
+    </table>
+    ${heat.largestSector ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">
+      Largest sector: ${esc(heat.largestSector.sector)} (${fmtPct(heat.largestSector.pct)})</p>` : ''}`;
+
+  const limEl = document.getElementById('risk-limits');
+  const bar = (w) => `<div class="bar"><i class="${w.breached ? 'over' : ''}"
+    style="width:${Math.min(100, Math.max(0, w.pctUsed)).toFixed(0)}%"></i></div>`;
+  limEl.innerHTML = (limits.paused
+    ? `<div class="note bad"><b>Loss limit reached.</b> The rule you set for yourself says stop
+        trading for now. Nothing here enforces that — you do.</div>` : '') + `
+    <table>
+      <tr><td>Today</td><td class="num">${esc(fmtRM(limits.daily.loss))} / ${esc(fmtRM(limits.daily.limit))}</td></tr>
+      <tr><td colspan="2">${bar(limits.daily)}</td></tr>
+      <tr><td>This week</td><td class="num">${esc(fmtRM(limits.weekly.loss))} / ${esc(fmtRM(limits.weekly.limit))}</td></tr>
+      <tr><td colspan="2">${bar(limits.weekly)}</td></tr>
+      <tr><td>This month</td><td class="num">${esc(fmtRM(limits.monthly.loss))} / ${esc(fmtRM(limits.monthly.limit))}</td></tr>
+      <tr><td colspan="2">${bar(limits.monthly)}</td></tr>
+    </table>`;
+
+  const wins = state.realizedTrades.filter(t => t.pl > 0).length;
+  const losses = state.realizedTrades.filter(t => t.pl < 0).length;
+  const total = state.realizedTrades.length;
+  document.getElementById('risk-record').innerHTML = total ? `
+    <table>
+      <tr><td>Closed trades</td><td class="num">${total}</td></tr>
+      <tr><td>Win rate</td><td class="num">${fmtPct((wins / total) * 100)}</td></tr>
+      <tr><td>Wins / losses</td><td class="num">${wins} / ${losses}</td></tr>
+      <tr><td>Longest win streak</td><td class="num">${streak.maxWinStreak}</td></tr>
+      <tr><td>Longest losing streak</td><td class="num">${streak.maxLossStreak}</td></tr>
+    </table>`
+    : `<div class="empty">No closed trades yet — nothing to judge.</div>`;
+}
+
+/* ---------- setup render ---------- */
+function renderSetup() {
+  const el = document.getElementById('sheet-id');
+  if (document.activeElement !== el) el.value = state.sheetId;
+
+  const signedIn = !!state.accessToken;
+  document.getElementById('btn-google-signin').textContent = signedIn ? 'Connected ✓' : 'Connect Google';
+  document.getElementById('btn-discover').disabled = !(signedIn && state.sheetId);
+
+  document.getElementById('conn-status').innerHTML = `
+    <div class="stat-row" style="grid-template-columns:1fr 1fr">
+      <div class="stat ${signedIn ? 'good' : ''}"><div class="v">${signedIn ? 'Yes' : 'No'}</div><div class="l">Signed in</div></div>
+      <div class="stat ${Object.keys(state.tabs).length ? 'good' : ''}">
+        <div class="v">${Object.keys(state.tabs).length}</div><div class="l">Tabs mapped</div></div>
+    </div>`;
+
+  const map = document.getElementById('tab-map');
+  if (!Object.keys(state.tabs).length && !state.tabsMissing.length) {
+    map.innerHTML = `<p class="muted" style="font-size:12.5px;margin:0">
+      Connect, then "Check tabs" to map this spreadsheet's tabs to Money and Invest.</p>`;
+  } else {
+    const rows = TAB_SPEC.map(s => `
+      <tr><td>${esc(s.label)}</td>
+        <td class="${state.tabs[s.role] ? '' : 'muted'}">${esc(state.tabs[s.role] || 'not found')}</td></tr>`).join('');
+    map.innerHTML = (state.tabsMissing.length
+      ? `<div class="note bad">Missing required tab(s): ${state.tabsMissing.map(esc).join(', ')}.
+          Sync is disabled until they exist.</div>` : `<div class="note ok">All required tabs found.</div>`)
+      + `<table>${rows}</table>`;
+  }
+
+  const pending = state.transactions.filter(t => !state.syncedIds.has(t.id)).length;
+  const canSync = signedIn && state.sheetId && pending > 0 && state.tabs.moneyTransactions && !state.syncing;
+  const btn = document.getElementById('btn-sync-now');
+  btn.disabled = !canSync;
+  btn.textContent = state.syncing ? 'Syncing…' : `Sync now (${pending} pending)`;
+  document.getElementById('sync-status').innerHTML = `
+    <div class="stat-row" style="grid-template-columns:1fr 1fr">
+      <div class="stat"><div class="v">${pending}</div><div class="l">Not yet synced</div></div>
+      <div class="stat"><div class="v">${state.transactions.length}</div><div class="l">Total logged</div></div>
+    </div>
+    ${state.lastSyncMsg ? `<p class="muted" style="font-size:12.5px">${esc(state.lastSyncMsg)}</p>` : ''}`;
+
+  const setVal = (id, v) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = v; };
+  setVal('cfg-cash', state.cash || '');
+  setVal('cfg-risk-pct', state.riskLimits.maxRiskPct);
+  setVal('cfg-daily', state.riskLimits.daily);
+  setVal('cfg-weekly', state.riskLimits.weekly);
+  setVal('cfg-monthly', state.riskLimits.monthly);
+}
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+/* ---------- Google sign-in + Sheets (needs the network) ---------- */
+let googleTokenClient = null;
+
+function ensureTokenClient() {
+  if (googleTokenClient || typeof google === 'undefined') return googleTokenClient;
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: SHEETS_SCOPE,
+    callback: (resp) => {
+      if (resp.error) { toast('Google sign-in failed: ' + resp.error); return; }
+      state.accessToken = resp.access_token;
+      toast('Connected to Google.');
+      render();
+      doDiscoverTabs();
+    },
+  });
+  return googleTokenClient;
+}
+
+function doGoogleSignIn() {
+  if (typeof google === 'undefined') { toast('Google sign-in script not loaded — check your connection.'); return; }
+  const client = ensureTokenClient();
+  if (client) client.requestAccessToken();
+}
+
+async function sheetsFetch(url, options) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...(options && options.headers), Authorization: `Bearer ${state.accessToken}` },
+  });
+  if (!res.ok) {
+    if (res.status === 401) state.accessToken = null;
+    const body = await res.text().catch(() => '');
+    throw new Error(`Sheets API ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+const sheetUrl = (path) =>
+  `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.sheetId)}${path}`;
+
+async function readRange(range) {
+  const j = await sheetsFetch(sheetUrl(`/values/${encodeURIComponent(range)}`));
+  return j.values || [];
+}
+
+async function doDiscoverTabs() {
+  if (!state.accessToken || !state.sheetId) { toast('Connect Google and set a spreadsheet ID first.'); return; }
+  try {
+    const meta = await sheetsFetch(sheetUrl('?fields=sheets.properties.title'));
+    const titles = (meta.sheets || []).map(s => s.properties && s.properties.title).filter(Boolean);
+    const { tabs, missing } = resolveTabs(titles);
+    state.tabs = tabs;
+    state.tabsMissing = missing;
+    safeSet(LS.tabs, tabs);
+    toast(missing.length ? `Mapped, but missing: ${missing.join(', ')}` : `Mapped ${Object.keys(tabs).length} tabs.`);
+  } catch (e) {
+    toast('Could not read the spreadsheet: ' + e.message);
+  }
+  render();
+}
+
+async function doSyncNow() {
+  if (!state.accessToken || !state.sheetId || state.syncing) return;
+  const tab = state.tabs.moneyTransactions;
+  if (!tab) { toast('Run "Check tabs" first — no Money transactions tab mapped.'); return; }
+  const toSync = state.transactions.filter(t => !state.syncedIds.has(t.id));
+  if (!toSync.length) { toast('Nothing to sync.'); return; }
+
+  state.syncing = true; render();
+  try {
+    const colA = await readRange(a1(tab, 'A:A'));
+    const startRow = findFirstEmptyRow(colA.length ? colA : [[]]);
+    const writes = buildSyncWrites(toSync, startRow, tab);
+
+    const data = [];
+    writes.forEach(w => { data.push(w.ab); data.push(w.de); });
+    await sheetsFetch(sheetUrl('/values:batchUpdate'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data })
+    });
+
+    writes.forEach(w => state.syncedIds.add(w.transactionId));
+    safeSet(LS.syncedIds, [...state.syncedIds]);
+    state.lastSyncMsg = `Synced ${writes.length} transaction(s) just now, starting at row ${startRow}.`;
+    toast(state.lastSyncMsg);
+  } catch (e) {
+    state.lastSyncMsg = 'Sync failed: ' + e.message;
+    toast('Sync failed — see Setup for details.');
+  } finally {
+    state.syncing = false; render();
+  }
+}
+
+/* ---------- invest data ---------- */
+async function loadInvestFromSheet() {
+  if (!state.accessToken || !state.sheetId) { toast('Connect Google in Setup first.'); return; }
+  const txTab = state.tabs.investTransactions;
+  if (!txTab) { toast('Run "Check tabs" first — no Invest transactions tab mapped.'); return; }
+
+  state.investMsg = 'Loading…'; render();
+  try {
+    const rows = await readRange(a1(txTab, 'A:Q'));
+    const ledger = reduceLedger(investTxRowsToObjects(rows));
+    state.holdings = ledger.holdings.map(h => ({ ...h, sector: sectorFor(h.ticker) }));
+    state.realizedTrades = ledger.realizedTrades;
+    state.ledgerWarnings = ledger.warnings;
+
+    if (state.tabs.investConfig) {
+      try {
+        const cfg = parseConfigRows(await readRange(a1(state.tabs.investConfig, 'A:B')));
+        if (cfg.cash != null) { state.cash = cfg.cash; safeSet(LS.cash, state.cash); }
+        ['maxRiskPct', 'daily', 'weekly', 'monthly'].forEach(k => {
+          if (cfg[k] != null) state.riskLimits[k] = cfg[k];
+        });
+        safeSet(LS.riskLimits, state.riskLimits);
+      } catch (e) { /* Config is optional — holdings still work without it */ }
+    }
+
+    state.investLoaded = true;
+    state.investMsg = `${state.holdings.length} open position(s), ${state.realizedTrades.length} closed.`;
+    await refreshHoldingPrices();
+  } catch (e) {
+    state.investMsg = 'Could not load: ' + e.message;
+  }
+  render();
+}
+
+async function refreshHoldingPrices() {
+  for (const h of state.holdings) {
+    try {
+      const hist = await fetchHistory(h.ticker);
+      if (!hist.length) continue;
+      h.currentPrice = hist[hist.length - 1].close;
+      const s = computeStopInfo(hist, h.avgCost);
+      if (s) { h.stopInfo = s; h.stopPrice = s.operative; }
+    } catch (e) { /* one unreachable ticker shouldn't blank the whole table */ }
+  }
+  render();
+}
+
+async function doLogTrade() {
+  const tab = state.tabs.investTransactions;
+  if (!state.accessToken || !tab) { toast('Connect and map tabs in Setup first.'); return; }
+  const get = (id) => (document.getElementById(id) || {}).value || '';
+  const trade = {
+    date: get('t-date') || todayISO(),
+    side: get('t-side') || 'Buy',
+    ticker: get('t-ticker').trim(),
+    qty: num(get('t-qty')),
+    price: num(get('t-price')),
+    fee: num(get('t-fee')),
+    thesis: get('t-thesis').trim(),
+    invalidation: get('t-invalidation').trim(),
+    source: 'app',
+    strategyVersion: state.strategy.version,
+  };
+  if (!trade.ticker) { toast('Enter a ticker.'); return; }
+  if (!(trade.qty > 0)) { toast('Enter a quantity above zero.'); return; }
+  if (!(trade.price > 0)) { toast('Enter a price above zero.'); return; }
+
+  const btn = document.getElementById('btn-log-trade');
+  btn.disabled = true; btn.textContent = 'Logging…';
+  try {
+    const colA = await readRange(a1(tab, 'A:A'));
+    const row = findFirstEmptyRow(colA.length ? colA : [[]]);
+    await sheetsFetch(sheetUrl('/values:batchUpdate'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: [{ range: a1(tab, `A${row}:Q${row}`), values: [buildInvestTradeRow(trade)] }]
+      })
+    });
+    toast(`Logged ${trade.side} ${trade.qty} ${trade.ticker} to row ${row}.`);
+    ['t-ticker', 't-qty', 't-price', 't-thesis', 't-invalidation'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
+    });
+    await loadInvestFromSheet();
+  } catch (e) {
+    toast('Could not log the trade: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Log trade to Sheet';
+  }
+}
+
+/* ---------- prices (Yahoo blocks browser CORS; proxy fallback chain) ---------- */
+async function fetchJSON(url) {
+  const attempts = [
+    async () => {
+      const r = await fetch('https://r.jina.ai/' + url);
+      const t = await r.text();
+      return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+    },
+    async () => {
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
+      return JSON.parse((await r.json()).contents);
+    },
+    async () => (await fetch(url)).json(),
+  ];
+  let lastErr;
+  for (const attempt of attempts) {
+    try { return await attempt(); } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('all fetch paths failed');
+}
+
+async function fetchHistory(ticker) {
+  const data = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=6mo&interval=1d`);
+  const result = data && data.chart && data.chart.result && data.chart.result[0];
+  if (!result) throw new Error('no data for ' + ticker);
+  const q = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
+  const closes = q.close || [], volumes = q.volume || [], highs = q.high || [], lows = q.low || [];
+  const clean = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (closes[i] != null) {
+      clean.push({
+        close: closes[i], volume: volumes[i] || 0,
+        high: highs[i] != null ? highs[i] : closes[i],
+        low: lows[i] != null ? lows[i] : closes[i],
+      });
+    }
+  }
+  return clean;
+}
+
+function sectorFor(code) {
+  const u = state.universe.find(x => x.code.toUpperCase() === String(code).toUpperCase());
+  return u ? u.sector : 'Unclassified';
+}
+
+/* Ranks and trims the raw scan into what's worth looking at: everything you
+   already hold (you have to monitor those), plus only the strongest few new
+   BUY signals — at this budget you can act on one or two, so listing twenty
+   would just be browsing. */
+function buildScreenRows({ scanned, held, cash, regime, strategy, riskLimits, investedCapital }) {
+  const heldSet = new Set(held.map(t => String(t).toUpperCase()));
+  const portfolioValue = cash + investedCapital;
+  const maxScore = maxPossibleScore(strategy.weights);
+
+  const rows = scanned.map(s => {
+    const isHeld = heldSet.has(s.code.toUpperCase());
+    const lotCost = s.price * LOT_SIZE;
+    return { ...s, isHeld, lotCost, liquid: s.avgVol20 >= LIQUIDITY_FLOOR, fitsBudget: lotCost <= cash,
+             trendStrength: (s.sma20 - s.sma50) / s.sma50 };
+  }).filter(r => r.isHeld || (r.liquid && r.fitsBudget));
+
+  const candidates = rows.filter(r => !r.isHeld && r.signal === 'BUY')
+    .sort((a, b) => b.trendStrength - a.trendStrength).slice(0, TOP_CANDIDATES);
+  const shown = [...rows.filter(r => r.isHeld), ...candidates];
+
+  return shown.map(r => {
+    let card = null;
+    if (!r.isHeld && r.signal === 'BUY' && r.hist) {
+      const base = scoreCandidate({ hist: r.hist, cls: r, avgVol20: r.avgVol20, regime, fundamentals: null, strategy });
+      const ets = computeEntryStopTarget({
+        currentPrice: r.price,
+        highs: r.hist.map(h => h.high), lows: r.hist.map(h => h.low), closes: r.hist.map(h => h.close)
+      });
+      const sizing = ets ? computePositionSize({
+        portfolioValue, maxRiskPct: riskLimits.maxRiskPct, entry: r.price, stop: ets.stop, cash, target: ets.target
+      }) : null;
+      if (ets) card = buildDecisionCard({ ticker: r.code, name: r.name, currentPrice: r.price, base, entryStopTarget: ets, positionSizing: sizing, strategy });
+    }
+    return { ...r, card, expanded: false,
+      bucket: classifyBucket({ score: card ? card.score : 0, maxScore, signal: r.signal, fitsBudget: r.fitsBudget, liquid: r.liquid }) };
+  });
+}
+
+async function runScreener() {
+  if (state.screening) return;
+  state.screening = true;
+  state.screenStatus = 'loading universe…';
+  state.screenRows = [];
+  render();
+
+  const scanned = [];
+  let upCount = 0, classifiedCount = 0;
+  const universe = state.universe.slice();
+  const heldTickers = state.holdings.map(h => h.ticker);
+  heldTickers.forEach(t => {
+    if (!universe.find(u => u.code.toUpperCase() === t.toUpperCase())) {
+      universe.push({ code: t, name: t, sector: 'Unclassified' });
+    }
+  });
+
+  let done = 0;
+  for (const stock of universe) {
+    state.screenStatus = `checking ${stock.code} (${++done}/${universe.length})…`;
+    document.getElementById('screen-status').innerHTML = '<span class="spinner"></span> ' + esc(state.screenStatus);
+    try {
+      const hist = await fetchHistory(stock.code);
+      const closes = hist.map(h => h.close);
+      const cls = classify(closes);
+      if (!cls) continue;
+      classifiedCount++;
+      if (cls.trend === 'up') upCount++;
+      scanned.push({
+        ...stock, ...cls, hist,
+        price: closes[closes.length - 1],
+        avgVol20: hist.slice(-20).reduce((a, h) => a + h.volume, 0) / Math.min(20, hist.length),
+      });
+    } catch (e) { continue; }
+  }
+
+  try {
+    const klci = await fetchHistory('^KLSE');
+    state.lastRegime = classifyRegime({
+      klciCloses: klci.map(h => h.close),
+      breadthPct: classifiedCount > 0 ? (upCount / classifiedCount) * 100 : null,
+    });
+  } catch (e) { state.lastRegime = null; }
+
+  const investedCapital = state.holdings.reduce((s, h) => s + h.qty * (h.currentPrice ?? h.avgCost), 0);
+  state.screenRows = buildScreenRows({
+    scanned, held: heldTickers, cash: num(state.cash),
+    regime: state.lastRegime ? state.lastRegime.regime : 'NEUTRAL',
+    strategy: state.strategy, riskLimits: state.riskLimits, investedCapital,
+  });
+
+  const newCount = state.screenRows.filter(r => !r.isHeld).length;
+  state.screenStatus = `${newCount} new candidate(s) and ${state.screenRows.length - newCount} held position(s), from ${classifiedCount} scanned. Not financial advice.`;
+  state.screening = false;
+  render();
+}
+
+/* ---------- money actions ---------- */
+function doParseInput() {
+  const textarea = document.getElementById('capture-input');
+  const text = (textarea.value || '').trim();
+  if (!text) return;
+  state.pending = parseInput(text, state.learned);
+  flagDuplicates(state.pending, state.transactions, todayISO());
+  render();
+}
+
+function doRemovePending(i) { state.pending.splice(i, 1); render(); }
+
+function doSavePending() {
+  if (state.pending.filter(p => !(p.amount > 0)).length) {
+    toast('Fix the amount on the highlighted line(s) first.'); return;
+  }
+  const now = Date.now(), today = todayISO();
+  state.pending.forEach((p, i) => {
+    state.transactions.push({
+      id: uid(), date: today, category: p.category, type: catInfo(p.category).type,
+      amount: p.amount, note: p.note, rawText: p.rawText, createdAt: now + i,
+    });
+  });
+  safeSet(LS.tx, state.transactions);
+  state.pending = [];
+  document.getElementById('capture-input').value = '';
+  toast('Saved.');
+  render();
+}
+
+function doCancelPending() { state.pending = []; render(); }
+
+function exportCSV() {
+  const lines = [['Date', 'Category', 'Type', 'Amount (RM)', 'Notes', 'Month'].join(',')];
+  [...state.transactions].sort((a, b) => a.createdAt - b.createdAt).forEach(t => {
+    lines.push([t.date, t.category, t.type, t.amount.toFixed(2), t.note, monthKey(t.date)]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  });
+  const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'pm-money-transactions.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('CSV downloaded.');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  if (action === 'switch-section') {
+    state.section = el.dataset.section;
+    render();
+    if (state.section === 'invest' && !state.investLoaded && state.accessToken) loadInvestFromSheet();
+  }
+  else if (action === 'switch-tab') { state.tab[state.section] = el.dataset.tab; render(); }
+  else if (action === 'parse-input') doParseInput();
+  else if (action === 'save-pending') doSavePending();
+  else if (action === 'cancel-pending') doCancelPending();
+  else if (action === 'export-csv') exportCSV();
+  else if (action === 'remove-pending') doRemovePending(Number(el.dataset.index));
+  else if (action === 'google-signin') doGoogleSignIn();
+  else if (action === 'discover-tabs') doDiscoverTabs();
+  else if (action === 'sync-now') doSyncNow();
+  else if (action === 'run-screener') runScreener();
+  else if (action === 'refresh-invest') loadInvestFromSheet();
+  else if (action === 'log-trade') doLogTrade();
+  else if (action === 'toggle-card') {
+    const i = Number(el.dataset.index);
+    if (state.screenRows[i]) { state.screenRows[i].expanded = !state.screenRows[i].expanded; render(); }
+  }
+  else if (action === 'prefill-trade') {
+    state.section = 'invest';
+    state.tab.invest = 'portfolio';
+    render();
+    const set = (id, v) => { const e2 = document.getElementById(id); if (e2) e2.value = v; };
+    set('t-date', todayISO());
+    set('t-ticker', el.dataset.ticker);
+    set('t-price', el.dataset.price);
+    set('t-invalidation', el.dataset.invalidation || '');
+    toast('Filled in — check the numbers before you log it.');
+  }
+});
+
+document.addEventListener('input', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  if (action === 'edit-pending-amount') {
+    state.pending[Number(el.dataset.index)].amount = el.value === '' ? null : parseFloat(el.value);
+  } else if (action === 'edit-pending-note') {
+    state.pending[Number(el.dataset.index)].note = el.value;
+  } else if (action === 'edit-budget') {
+    state.budgets[el.dataset.category] = el.value === '' ? 0 : parseFloat(el.value);
+    safeSet(LS.budgets, state.budgets);
+  } else if (action === 'edit-sheet-id') {
+    state.sheetId = el.value.trim();
+    safeSet(LS.sheetId, state.sheetId);
+  } else if (action === 'edit-cash') {
+    state.cash = el.value === '' ? 0 : parseFloat(el.value);
+    safeSet(LS.cash, state.cash);
+  } else if (action === 'edit-risk') {
+    state.riskLimits[el.dataset.key] = el.value === '' ? 0 : parseFloat(el.value);
+    safeSet(LS.riskLimits, state.riskLimits);
+  }
+});
+
+document.addEventListener('change', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el || el.dataset.action !== 'edit-pending-category') return;
+  const p = state.pending[Number(el.dataset.index)];
+  p.category = el.value;
+  p.type = catInfo(el.value).type;
+  p.confidence = 1;
+  learnFromCorrection(p.rawText, el.value, state.learned);
+  safeSet(LS.learned, state.learned);
+  render();
+});
+
+/* ---------- boot ---------- */
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
+}
+render();
+</script>
