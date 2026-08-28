@@ -279,7 +279,11 @@
     <div class="card">
       <div class="section-title">Money sync</div>
       <div id="sync-status"></div>
-      <button class="btn block" data-action="sync-now" id="btn-sync-now" disabled style="margin-top:10px">Sync now</button>
+      <div class="row" style="margin-top:10px">
+        <button class="btn secondary" data-action="load-money" id="btn-load-money">Reload from sheet</button>
+        <button class="btn block" data-action="sync-now" id="btn-sync-now" disabled>Sync now</button>
+      </div>
+      <p class="muted" id="money-load-status" style="font-size:12.5px;margin-top:6px"></p>
     </div>
 
     <div class="card">
@@ -522,6 +526,19 @@ function fmtSheetDate(isoDate) {
   const day = String(d.getDate()).padStart(2, '0');
   const month = d.toLocaleDateString('en-US', { month: 'short' });
   return `${day} ${month} ${d.getFullYear()}`;
+}
+
+/* Local-date ISO string (never UTC) — matches what parseSheetDate() decoded,
+   so a row pulled from the sheet round-trips to the same date it displayed. */
+function toISO(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0');
+}
+
+/* Identifies "the same transaction" for merging sheet rows that have no app
+   ID (typed straight into Sheets) with ones already in local state. */
+function txKey(t) {
+  return `${t.date}|${t.category}|${Math.round(t.amount * 100)}|${(t.note || '').trim().toLowerCase()}`;
 }
 
 /* First blank row in the tab's column A — that's where the pre-formatted
@@ -1159,6 +1176,8 @@ const state = {
   syncedIds: new Set(safeGet(LS.syncedIds, [])),
   syncing: false,
   lastSyncMsg: '',
+  moneyLoaded: false,
+  moneyMsg: '',
   // invest
   strategy: DEFAULT_STRATEGY,
   cash: safeGet(LS.cash, 0),
@@ -1588,12 +1607,14 @@ function renderSetup() {
   const btn = document.getElementById('btn-sync-now');
   btn.disabled = !canSync;
   btn.textContent = state.syncing ? 'Syncing…' : `Sync now (${pending} pending)`;
+  document.getElementById('btn-load-money').disabled = !(signedIn && state.tabs.moneyTransactions);
   document.getElementById('sync-status').innerHTML = `
     <div class="stat-row" style="grid-template-columns:1fr 1fr">
       <div class="stat"><div class="v">${pending}</div><div class="l">Not yet synced</div></div>
       <div class="stat"><div class="v">${state.transactions.length}</div><div class="l">Total logged</div></div>
     </div>
     ${state.lastSyncMsg ? `<p class="muted" style="font-size:12.5px">${esc(state.lastSyncMsg)}</p>` : ''}`;
+  document.getElementById('money-load-status').textContent = state.moneyMsg;
 
   const setVal = (id, v) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = v; };
   setVal('cfg-cash', state.cash || '');
@@ -1670,6 +1691,8 @@ async function doDiscoverTabs() {
     state.tabsMissing = missing;
     safeSet(LS.tabs, tabs);
     toast(missing.length ? `Mapped, but missing: ${missing.join(', ')}` : `Mapped ${Object.keys(tabs).length} tabs.`);
+    if (tabs.moneyTransactions) loadMoneyFromSheet();
+    if (tabs.investTransactions) loadInvestFromSheet();
   } catch (e) {
     toast('Could not read the spreadsheet: ' + e.message);
   }
@@ -1706,6 +1729,51 @@ async function doSyncNow() {
   } finally {
     state.syncing = false; render();
   }
+}
+
+/* Pulls rows already sitting in Money - Transactions (typed straight into
+   Sheets, before this app existed, or added by hand since) into local
+   state, so Current cash / Monthly spending reflect the whole ledger, not
+   just what was captured in-app. Rows have no app ID, so a row is matched
+   to one already known locally by date+category+amount+note; anything new
+   is added and immediately marked synced, since it's already in the sheet. */
+async function loadMoneyFromSheet() {
+  if (!state.accessToken || !state.sheetId) { toast('Connect Google in Setup first.'); return; }
+  const tab = state.tabs.moneyTransactions;
+  if (!tab) { toast('Run "Check tabs" first — no Money transactions tab mapped.'); return; }
+
+  state.moneyMsg = 'Loading…'; render();
+  try {
+    const rows = await readRange(a1(tab, 'A2:E'));
+    const seen = new Set(state.transactions.map(txKey));
+    let added = 0;
+    rows.forEach((row, i) => {
+      const d = parseSheetDate(row[0]);
+      const category = String(row[1] || '').trim();
+      const amount = num(row[3]);
+      const note = String(row[4] || '').trim();
+      if (!d || !category || !(amount > 0)) return;
+      const date = toISO(d);
+      const key = txKey({ date, category, amount, note });
+      if (seen.has(key)) return;
+      seen.add(key);
+      const t = { id: uid(), date, category, type: catInfo(category).type, amount, note,
+                  rawText: '', createdAt: d.getTime() + i };
+      state.transactions.push(t);
+      state.syncedIds.add(t.id);
+      added++;
+    });
+    if (added) {
+      state.transactions.sort((a, b) => a.createdAt - b.createdAt);
+      safeSet(LS.tx, state.transactions);
+      safeSet(LS.syncedIds, [...state.syncedIds]);
+    }
+    state.moneyLoaded = true;
+    state.moneyMsg = added ? `Pulled ${added} transaction(s) from the sheet.` : 'Already up to date with the sheet.';
+  } catch (e) {
+    state.moneyMsg = 'Could not load: ' + e.message;
+  }
+  render();
 }
 
 /* ---------- invest data ---------- */
@@ -1967,6 +2035,7 @@ function doSavePending() {
   document.getElementById('capture-input').value = '';
   toast('Saved.');
   render();
+  if (state.accessToken && state.tabs.moneyTransactions) doSyncNow();
 }
 
 function doCancelPending() { state.pending = []; render(); }
@@ -2004,6 +2073,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'google-signin') doGoogleSignIn();
   else if (action === 'discover-tabs') doDiscoverTabs();
   else if (action === 'sync-now') doSyncNow();
+  else if (action === 'load-money') loadMoneyFromSheet();
   else if (action === 'run-screener') runScreener();
   else if (action === 'refresh-invest') loadInvestFromSheet();
   else if (action === 'log-trade') doLogTrade();
