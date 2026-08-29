@@ -4,6 +4,6 @@
   "description": "Money in, money out — and what you own. One app over one spreadsheet.",
   "private": true,
   "scripts": {
-    "test": "node test.js && node test-integration.js && node test-parity.mjs"
+    "test": "node test.js && node test-integration.js && node test-parity.mjs && node test-cron-parity.mjs"
   }
 }

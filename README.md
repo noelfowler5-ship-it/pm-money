@@ -95,9 +95,9 @@ offline-capable.
 npm test
 ```
 
-runs three suites, all of which must stay green:
+runs four suites, all of which must stay green:
 
-- **`node test.js`** — 207 assertions covering parsing, budget math, the
+- **`node test.js`** — 213 assertions covering parsing, budget math, the
   learning loop, duplicate detection, tab discovery, A1 quoting, sheet-date
   parsing, indicators, scoring, position sizing, the ledger, risk math, screener
   ranking, and every render path (asserting no `undefined`/`NaN` reaches the
@@ -117,6 +117,11 @@ runs three suites, all of which must stay green:
   `../signalvest`, or set `PERSONAL_CFO=` / `SIGNALVEST=`); if they're missing
   it skips rather than fails.
 
+- **`node test-cron-parity.mjs`** — checks that `cron/screen-and-report.mjs`
+  (the standalone morning-screen script — see below) produces identical
+  output to index.html's own scoring/sizing functions for the same inputs,
+  since the cron script duplicates rather than imports that logic.
+
 `test.js` runs the app's own JavaScript inside Node against a stubbed DOM
 (`harness.js`) — no browser required.
 
@@ -134,11 +139,19 @@ Malaysian `DD/MM/YYYY`, or the `06 Aug 2026` text the Money tab uses;
 `new Date()` reads `10/03/2026` as October and silently mis-sorts the ledger, so
 the format is detected explicitly instead.
 
+### Morning screen (cron)
+
+`cron/screen-and-report.mjs` is a fresh, standalone script — the app itself
+can't run in the background (it's a static page, no server), so this is what
+actually screens every weekday morning unattended: it reads the combined
+sheet directly (via a Google service account, not your personal sign-in),
+scans the same universe with the same rules as the in-app Screener, pushes a
+Telegram digest, and writes the day's live Invest total into the NetWorth
+tab's Moomoo cell. See `cron/README.md` for one-time setup (service account,
+Telegram bot, GitHub Actions secrets). It replaces Signalvest's old GitHub
+Actions + Telegram cron, which pointed at the standalone (pre-merge) sheet.
+
 ### Notes for later
 
-- Signalvest's Apps Script backend and its GitHub Actions Telegram cron still
-  point at the old standalone sheet. This app talks to the Sheets API directly
-  with OAuth and needs neither, but if you want those alerts back they need
-  re-pointing at the combined sheet.
 - Personal CFO and Signalvest stay live as backups until this has run for a
   while. Nothing here writes to their spreadsheets.
