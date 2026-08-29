@@ -40,6 +40,12 @@ const INTENTIONAL = new Map([
   ['parseSegment "gf rent 100"',
    "Personal CFO ordered /rent|sewa/ before /(girlfriend|gf).*rent/, and the map is first-match-wins, so \"Girlfriend's rent help\" was unreachable dead code. Reordered here so the more specific rule wins."],
   ['guessCategory "gf rent 100"', 'same rule-ordering fix as above'],
+  ['category names',
+   'Added "Investment fund" (Savings group, RM900 target) — a new ring-fenced category that did not exist in Personal CFO. Its lifetime total becomes the Invest section\'s "cash available to invest" ceiling, replacing a manually typed number.'],
+  ['category taxonomy + budget targets',
+   'Same addition as "category names" above — the new Investment fund category.'],
+  ['ledger empty',
+   'reduceLedger() now also returns cashDeployed (net RM tied up in buys after backing out what sells returned), which Signalvest\'s ledger.js does not compute — needed to derive "cash available to invest" from the funded Investment fund total instead of a manually typed number.'],
 ]);
 
 let pass = 0, fail = 0, intentional = 0;

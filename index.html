@@ -288,9 +288,14 @@
 
     <div class="card">
       <div class="section-title">Invest settings</div>
+      <p class="muted" style="margin-top:-4px;font-size:12.5px">
+        Cash available to invest is computed, not typed in — it's your lifetime
+        "Investment fund" total from Money, minus whatever's currently deployed
+        in buys. Top up in Money to raise the ceiling.
+      </p>
       <div class="grid2">
         <div class="field"><label>Cash available to invest (RM)</label>
-          <input type="number" id="cfg-cash" data-action="edit-cash" step="0.01" min="0"></div>
+          <input type="number" id="cfg-cash" disabled></div>
         <div class="field"><label>Max risk per trade (%)</label>
           <input type="number" id="cfg-risk-pct" data-action="edit-risk" data-key="maxRiskPct" step="0.1" min="0"></div>
         <div class="field"><label>Daily loss limit (RM)</label>
@@ -399,6 +404,7 @@ const CATEGORIES = [
   { name: "Car sinking fund",              type: "Expense", group: "Savings",   budget: 120 },
   { name: "Emergency Fund Tier 1",         type: "Expense", group: "Savings",   budget: 150 },
   { name: "Emergency Fund Tier 2 (ASB)",   type: "Expense", group: "Savings",   budget: 350 },
+  { name: "Investment fund",               type: "Expense", group: "Savings",   budget: 900 },
   { name: "Gold savings for Mom",          type: "Expense", group: "Family",    budget: 0 },
   { name: "Sunday treat",                  type: "Expense", group: "Lifestyle", budget: 100 },
   { name: "Dobi (laundry)",                type: "Expense", group: "Lifestyle", budget: 44 },
@@ -421,6 +427,7 @@ const KEYWORD_MAP = [
   [/\b(car sinking|car fund)\b/i, "Car sinking fund"],
   [/\b(emergency fund tier 1|ef ?1|ef tier 1)\b/i, "Emergency Fund Tier 1"],
   [/\b(asb|emergency fund tier 2|ef ?2|ef tier 2)\b/i, "Emergency Fund Tier 2 (ASB)"],
+  [/\b(invest(ing|ment)?\s*fund|moomoo|invest(ing)?\s*budget)\b/i, "Investment fund"],
   [/\b(gold)\b/i, "Gold savings for Mom"],
   [/\bsunday treat\b/i, "Sunday treat"],
   [/\b(dobi|laundry)\b/i, "Dobi (laundry)"],
@@ -517,6 +524,13 @@ function monthlyTotals(transactions, ymKey) {
 
 function lifetimeCash(transactions) {
   return transactions.reduce((sum, t) => sum + (t.type === 'Income' ? t.amount : -t.amount), 0);
+}
+
+/* All-time total funded into "Investment fund" — the ring-fenced ceiling
+   for what Invest is allowed to deploy. Once money, it isn't Money's
+   spendable cash anymore; it only grows when you log another top-up here. */
+function investmentFundTotal(transactions) {
+  return transactions.reduce((sum, t) => sum + (t.category === 'Investment fund' ? t.amount : 0), 0);
 }
 
 /* Matches the "06 Aug 2026" text format already in the Money tab's Date
@@ -994,6 +1008,7 @@ function reduceLedger(rawTransactions) {
   const positions = new Map();
   const realizedTrades = [], dividends = [], cashFlows = [], warnings = [];
   let realizedPLTotal = 0;
+  let cashDeployed = 0; // net RM tied up in buys, after backing out what sells returned
 
   for (const t of txs) {
     if (t.type === "Dividend") { dividends.push({ date: t.date, ticker: t.ticker, amount: t.amount, fee: t.fee }); continue; }
@@ -1004,6 +1019,7 @@ function reduceLedger(rawTransactions) {
     const pos = positions.get(t.ticker) || { qty: 0, buyQty: 0, buyAmount: 0 };
     if (t.side === "Buy" || t.type === "Buy") {
       pos.qty += t.qty; pos.buyQty += t.qty; pos.buyAmount += t.qty * t.price;
+      cashDeployed += t.qty * t.price + t.fee;
       positions.set(t.ticker, pos);
     } else if (t.side === "Sell" || t.type === "Sell") {
       const avgCostAtSale = pos.buyQty > 0 ? pos.buyAmount / pos.buyQty : 0;
@@ -1014,6 +1030,7 @@ function reduceLedger(rawTransactions) {
       }
       const pl = (t.price - avgCostAtSale) * sellQty - t.fee;
       realizedPLTotal += pl;
+      cashDeployed -= sellQty * t.price - t.fee;
       realizedTrades.push({ date: t.date, ticker: t.ticker, qty: sellQty, exitPrice: t.price,
         avgCostAtSale, pl, fee: t.fee, setup: t.setup, emotion: t.emotion,
         ruleFollowed: t.ruleFollowed, strategyVersion: t.strategyVersion, signalScore: t.signalScore });
@@ -1029,7 +1046,7 @@ function reduceLedger(rawTransactions) {
       holdings.push({ ticker, qty: pos.qty, avgCost, costBasis: pos.qty * avgCost });
     }
   }
-  return { holdings, realizedTrades, dividends, cashFlows, realizedPLTotal, warnings };
+  return { holdings, realizedTrades, dividends, cashFlows, realizedPLTotal, cashDeployed, warnings };
 }
 
 /* ============================ SHEET WIRING ============================ */
@@ -1178,6 +1195,8 @@ const state = {
   lastSyncMsg: '',
   moneyLoaded: false,
   moneyMsg: '',
+  investmentFundTotal: 0,
+  cashDeployed: null,
   // invest
   strategy: DEFAULT_STRATEGY,
   cash: safeGet(LS.cash, 0),
@@ -1770,6 +1789,7 @@ async function loadMoneyFromSheet() {
     }
     state.moneyLoaded = true;
     state.moneyMsg = added ? `Pulled ${added} transaction(s) from the sheet.` : 'Already up to date with the sheet.';
+    recomputeInvestCash();
   } catch (e) {
     state.moneyMsg = 'Could not load: ' + e.message;
   }
@@ -1789,11 +1809,12 @@ async function loadInvestFromSheet() {
     state.holdings = ledger.holdings.map(h => ({ ...h, sector: sectorFor(h.ticker) }));
     state.realizedTrades = ledger.realizedTrades;
     state.ledgerWarnings = ledger.warnings;
+    state.cashDeployed = ledger.cashDeployed;
+    recomputeInvestCash();
 
     if (state.tabs.investConfig) {
       try {
         const cfg = parseConfigRows(await readRange(a1(state.tabs.investConfig, 'A:B')));
-        if (cfg.cash != null) { state.cash = cfg.cash; safeSet(LS.cash, state.cash); }
         ['maxRiskPct', 'daily', 'weekly', 'monthly'].forEach(k => {
           if (cfg[k] != null) state.riskLimits[k] = cfg[k];
         });
@@ -1804,10 +1825,56 @@ async function loadInvestFromSheet() {
     state.investLoaded = true;
     state.investMsg = `${state.holdings.length} open position(s), ${state.realizedTrades.length} closed.`;
     await refreshHoldingPrices();
+    await writeNetWorthMoomoo();
   } catch (e) {
     state.investMsg = 'Could not load: ' + e.message;
   }
   render();
+}
+
+/* "Cash available to invest" is no longer a manually typed number — it's
+   the lifetime Investment fund total (a Money category) minus whatever's
+   currently deployed in buys, net of what sells returned. Runs after
+   either side loads, so whichever finishes last produces the real figure. */
+function recomputeInvestCash() {
+  if (state.cashDeployed == null) return;
+  state.investmentFundTotal = investmentFundTotal(state.transactions);
+  state.cash = Math.max(0, state.investmentFundTotal - state.cashDeployed);
+  safeSet(LS.cash, state.cash);
+}
+
+/* Pushes today's live Invest total (uninvested cash + market value of open
+   positions) into the NetWorth tab's Moomoo row, which used to be typed in
+   by hand. Finds the row/column by searching for the label text rather than
+   a hardcoded address — nothing else in this app assumes fixed cells either,
+   so a reformatted NetWorth tab doesn't silently break this. */
+async function writeNetWorthMoomoo() {
+  const tab = state.tabs.netWorth;
+  if (!state.accessToken || !tab || state.cashDeployed == null) return;
+  try {
+    const grid = await readRange(a1(tab, 'A1:J60'));
+    let target = null;
+    for (let r = 0; r < grid.length && !target; r++) {
+      const row = grid[r] || [];
+      for (let c = 0; c < row.length; c++) {
+        if (String(row[c] || '').trim().toLowerCase() === 'moomoo') { target = { r, c: c + 1 }; break; }
+      }
+    }
+    if (!target) return; // no such row found — sheet layout changed, nothing to update
+    const holdingsValue = state.holdings.reduce((s, h) => s + (h.currentPrice || h.avgCost) * h.qty, 0);
+    const total = Math.round(((state.cash + holdingsValue) + Number.EPSILON) * 100) / 100;
+    const cellRange = a1(tab, `${colLetter(target.c)}${target.r + 1}`);
+    await sheetsFetch(sheetUrl(`/values/${encodeURIComponent(cellRange)}?valueInputOption=USER_ENTERED`), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range: cellRange, values: [[total]] }),
+    });
+  } catch (e) { /* best-effort — Invest still works without the Net Worth push */ }
+}
+
+function colLetter(index0) {
+  let n = index0 + 1, s = '';
+  while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
 }
 
 async function refreshHoldingPrices() {
@@ -1842,6 +1909,14 @@ async function doLogTrade() {
   if (!trade.ticker) { toast('Enter a ticker.'); return; }
   if (!(trade.qty > 0)) { toast('Enter a quantity above zero.'); return; }
   if (!(trade.price > 0)) { toast('Enter a price above zero.'); return; }
+
+  if (trade.side === 'Buy') {
+    const cost = trade.qty * trade.price + trade.fee;
+    if (cost > state.cash) {
+      toast(`Blocked — this costs ${fmtRM(cost)} but only ${fmtRM(state.cash)} is available in your Investment fund. Top up "Investment fund" in Money, or reduce the size.`);
+      return;
+    }
+  }
 
   const btn = document.getElementById('btn-log-trade');
   btn.disabled = true; btn.textContent = 'Logging…';
@@ -2033,6 +2108,7 @@ function doSavePending() {
   safeSet(LS.tx, state.transactions);
   state.pending = [];
   document.getElementById('capture-input').value = '';
+  recomputeInvestCash();
   toast('Saved.');
   render();
   if (state.accessToken && state.tabs.moneyTransactions) doSyncNow();
@@ -2108,9 +2184,6 @@ document.addEventListener('input', (e) => {
   } else if (action === 'edit-sheet-id') {
     state.sheetId = el.value.trim();
     safeSet(LS.sheetId, state.sheetId);
-  } else if (action === 'edit-cash') {
-    state.cash = el.value === '' ? 0 : parseFloat(el.value);
-    safeSet(LS.cash, state.cash);
   } else if (action === 'edit-risk') {
     state.riskLimits[el.dataset.key] = el.value === '' ? 0 : parseFloat(el.value);
     safeSet(LS.riskLimits, state.riskLimits);

@@ -94,9 +94,28 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ✓ ' + l); } else { fail
   ok(val('state.holdings.length') === 0, 'the fully-sold position is not left open');
   ok(val('state.realizedTrades.length') === 1, 'the sell became one realized trade');
   ok(Math.abs(val('state.realizedTrades[0].pl') - ((12 - 9) * 100 - 7)) < 1e-9, 'realized P/L is right: ' + val('state.realizedTrades[0].pl'));
-  ok(val('state.cash') === 1500, 'cash was read from the Config tab: got ' + val('state.cash'));
+  ok(val('state.cash') === 286, 'cash is computed (0 funded so far - (-286) net deployed from the closed round trip): got ' + val('state.cash'));
   ok(val('state.riskLimits.maxRiskPct') === 2, 'max risk % was read from Config: got ' + val('state.riskLimits.maxRiskPct'));
   ok(val('state.investLoaded') === true, 'the section is marked loaded');
+
+  console.log('\n[integration — investment fund ceiling]');
+  val(`state.transactions.push({id:'fund1', date:'2026-08-01', category:'Investment fund', type:'Expense', amount:900, note:'moomoo top-up', createdAt:0});
+    recomputeInvestCash();`);
+  ok(val('state.investmentFundTotal') === 900, 'funded total reflects the Investment fund category: got ' + val('state.investmentFundTotal'));
+  ok(Math.abs(val('state.cash') - 1186) < 1e-9, 'cash available = funded total minus net deployed (900 - -286): got ' + val('state.cash'));
+
+  console.log('\n[integration — a buy beyond the ceiling is blocked]');
+  calls.length = 0;
+  vm.runInContext(`
+    document.getElementById('t-date').value = '2026-08-28';
+    document.getElementById('t-side').value = 'Buy';
+    document.getElementById('t-ticker').value = '5225.kl';
+    document.getElementById('t-qty').value = '100000';
+    document.getElementById('t-price').value = '2.50';
+    document.getElementById('t-fee').value = '7';
+  `, C);
+  await val('doLogTrade()');
+  ok(calls.length === 0, 'no request is made when the buy would exceed the investment fund ceiling');
 
   console.log('\n[integration — logging a trade]');
   calls.length = 0;
